@@ -7,64 +7,99 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    /* ইউটিউব স্টাইল ১৬:৯ অনুপাত */
     .thumb-16-9 {
       aspect-ratio: 16 / 9;
       object-fit: cover;
       width: 100%;
     }
+    .btn-ad-gradient {
+      background: linear-gradient(90deg, #ff0055 0%, #ff007f 100%);
+      box-shadow: 0 4px 20px rgba(255, 0, 85, 0.4);
+    }
+    .btn-coin-gradient {
+      background: linear-gradient(90deg, #ff9900 0%, #ff5500 100%);
+      box-shadow: 0 4px 20px rgba(255, 153, 0, 0.4);
+    }
+    .modal-card {
+      background: #191622;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
   </style>
 </head>
-<body class="bg-[#0b0b12] text-white font-sans pb-16 select-none">
+<body class="bg-[#0c0a14] text-white font-sans pb-16 select-none">
 
   <!-- হেডার -->
-  <header class="p-4 flex justify-between items-center border-b border-gray-800/80 sticky top-0 bg-[#0b0b12]/95 backdrop-blur z-30">
+  <header class="p-4 flex justify-between items-center border-b border-gray-800/80 sticky top-0 bg-[#0c0a14]/95 backdrop-blur z-30">
     <div>
-      <h1 class="text-xl font-black bg-gradient-to-r from-rose-500 via-purple-500 to-amber-400 bg-clip-text text-transparent">
+      <h1 class="text-xl font-black bg-gradient-to-r from-rose-500 via-pink-500 to-amber-400 bg-clip-text text-transparent">
         {{APP_NAME}}
       </h1>
-      <p class="text-[10px] text-gray-400 font-mono">Premium Series Collection</p>
+      <p class="text-[10px] text-gray-400 font-mono">Premium Video Collection</p>
     </div>
-    <div class="bg-[#181826] px-3 py-1.5 rounded-full border border-amber-500/30 text-xs font-bold text-amber-400">
-      🔥 Hot Releases
+    
+    <div class="bg-[#1a162b] px-3.5 py-1.5 rounded-full flex items-center gap-1.5 border border-amber-500/30">
+      <span class="text-amber-400 text-sm">🪙</span>
+      <span id="userCoins" class="text-yellow-400 font-bold text-sm">0</span>
     </div>
   </header>
 
-  <!-- ভিডিও লিস্ট (শুধু ক্লিন থাম্বনেইল + টাইটেল) -->
+  <!-- ভিডিও লিস্ট -->
   <main class="p-4 space-y-5 max-w-md mx-auto" id="videoContainer">
     <div class="text-center py-16 text-gray-500 text-sm">ভিডিও লোড হচ্ছে...</div>
   </main>
 
-  <!-- পপআপ ১: পার্টস সিলেক্ট মডাল (থাম্বনেইলে ক্লিক করলে ওপেন হবে) -->
-  <div id="partsModal" class="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-end justify-center hidden z-40 p-4 transition-all">
-    <div class="bg-[#151522] border border-gray-800 w-full max-w-sm rounded-3xl p-6 shadow-2xl">
+  <!-- পার্টস বাছাই মডাল (একাধিক পার্ট থাকলে) -->
+  <div id="partsModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-end justify-center hidden z-40 p-4">
+    <div class="modal-card w-full max-w-sm rounded-3xl p-6 shadow-2xl">
       <div class="flex justify-between items-center mb-3">
         <h3 class="text-base font-bold text-gray-100 truncate pr-2" id="modalSeriesTitle">ভিডিওর নাম</h3>
         <button onclick="closePartsModal()" class="text-gray-400 hover:text-white text-lg">✕</button>
       </div>
       <p class="text-xs text-gray-400 mb-4">যে পার্টটি দেখতে চান সেটিতে ক্লিক করুন:</p>
-
-      <!-- পার্ট বাটনগুলো এখানে ডাইনামিকালি বসবে -->
       <div id="partsButtonList" class="grid grid-cols-2 gap-2.5 max-h-60 overflow-y-auto pr-1"></div>
     </div>
   </div>
 
-  <!-- পপআপ ২: অ্যাড কাউন্টডাউন ও আনলক মডাল -->
-  <div id="unlockModal" class="fixed inset-0 bg-black/90 flex items-center justify-center hidden z-50 p-4">
-    <div class="bg-[#161624] border border-gray-800 w-full max-w-sm rounded-3xl p-6 text-center shadow-2xl">
-      <div class="w-14 h-14 bg-rose-500/10 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
-        🔒
-      </div>
-      <h3 class="text-lg font-bold">ভিডিওটি আনলক করুন</h3>
-      <p class="text-xs text-gray-400 mt-1 mb-5">
-        বিজ্ঞাপন ওপেন হলে <span id="countdownDisplay" class="text-rose-400 font-bold">৭</span> সেকেন্ড অপেক্ষা করুন। এরপর অটোমেটিক ইনবক্সে ভিডিও পেয়ে যাবেন!
-      </p>
-
-      <button id="adBtn" onclick="startAdTimer()" class="w-full bg-gradient-to-r from-rose-500 to-amber-500 py-3.5 rounded-xl font-bold text-sm shadow-lg active:scale-95 transition">
-        🚀 Ad দেখে ভিডিও আনলক করুন
+  <!-- স্ক্রিনশটের হুবহু আনলক মডাল -->
+  <div id="unlockModal" class="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center hidden z-50 p-4">
+    <div class="modal-card w-full max-w-sm rounded-[32px] p-6 text-center shadow-2xl relative">
+      
+      <button onclick="closeUnlockModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition">
+        ✕
       </button>
 
-      <button onclick="closeUnlockModal()" class="mt-4 text-xs text-gray-500 underline block mx-auto">বাতিল করুন</button>
+      <div class="w-14 h-14 bg-gradient-to-b from-amber-400 to-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-amber-500/20">
+        <svg class="w-7 h-7 text-black fill-current" viewBox="0 0 24 24">
+          <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+        </svg>
+      </div>
+
+      <h3 class="text-xl font-bold text-white mb-1">ভিডিও আনলক করুন</h3>
+      <p class="text-[12px] text-gray-400 mb-6">নিচের <span class="text-white font-bold">২টি অপশন</span> থেকে যেকোনো একটি বেছে নিন —</p>
+
+      <div class="text-left space-y-3 mb-6 px-1 text-xs">
+        <div class="flex items-start gap-2.5">
+          <span class="bg-blue-500/20 text-blue-400 text-[10px] font-bold px-1.5 py-0.5 rounded mt-0.5">FREE</span>
+          <p class="text-gray-300">
+            <span class="text-white font-bold">Ad Unlock</span> — বিজ্ঞাপন দেখে <span id="timerDurationText" class="text-rose-400 font-bold">৭</span> সেকেন্ড পর Back দিলেই ফ্রি আনলক হয়ে যাবে।
+          </p>
+        </div>
+        <div class="flex items-start gap-2.5">
+          <span class="text-amber-400 text-sm mt-0.5">⚡</span>
+          <p class="text-gray-300">
+            <span class="text-white font-bold">Skip — ২০ Coins</span> — বিজ্ঞাপন ছাড়াই সরাসরি Coins খরচ করে Unlock করুন।
+          </p>
+        </div>
+      </div>
+
+      <button id="adBtn" onclick="startAdUnlock()" class="w-full btn-ad-gradient text-white font-bold py-3.5 rounded-2xl text-sm mb-3 flex items-center justify-center gap-2 active:scale-95 transition">
+        <span>🔗</span> <span id="adBtnText">Ad দেখে Unlock করুন</span>
+      </button>
+
+      <button onclick="handleCoinUnlock()" class="w-full btn-coin-gradient text-white font-bold py-3.5 rounded-2xl text-sm flex items-center justify-center gap-2 active:scale-95 transition">
+        <span>🪙</span> ২০ Coins দিয়ে Unlock করুন
+      </button>
+
     </div>
   </div>
 
@@ -77,8 +112,9 @@
 
     let allSeriesData = [];
     let selectedPartId = null;
+    let waitSeconds = 7;
+    let detectedBotUsername = "";
 
-    // ১. ভিডিও এবং পার্টস ডাটা লোড
     async function loadVideos() {
       try {
         const res = await fetch('/api/videos-with-parts');
@@ -93,7 +129,7 @@
 
         allSeriesData.forEach((item, index) => {
           container.innerHTML += `
-            <div onclick="openPartsModal(${index})" class="bg-[#14141e] rounded-3xl overflow-hidden border border-gray-800/80 shadow-xl cursor-pointer active:scale-[0.98] transition">
+            <div onclick="handleSeriesClick(${index})" class="bg-[#14121f] rounded-3xl overflow-hidden border border-gray-800/80 shadow-xl cursor-pointer active:scale-[0.98] transition">
               <div class="relative">
                 <img src="${item.thumbnail}" class="thumb-16-9" alt="${item.title}" />
                 <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
@@ -117,34 +153,44 @@
       }
     }
 
-    // ২. থাম্বনেইলে ক্লিক করলে পার্টসের পপআপ খোলা
-    function openPartsModal(index) {
+    function handleSeriesClick(index) {
       const item = allSeriesData[index];
       if (!item) return;
 
-      document.getElementById('modalSeriesTitle').innerText = item.title;
-      const listContainer = document.getElementById('partsButtonList');
-      listContainer.innerHTML = '';
+      if (item.parts && item.parts.length > 1) {
+        document.getElementById('modalSeriesTitle').innerText = item.title;
+        const listContainer = document.getElementById('partsButtonList');
+        listContainer.innerHTML = '';
 
-      item.parts.forEach(p => {
-        listContainer.innerHTML += `
-          <button onclick="triggerUnlock('${p.id}')" class="bg-[#1f1f2e] hover:bg-rose-600/30 border border-gray-700/60 text-xs px-3 py-3 rounded-2xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition text-gray-200">
-            🎬 ${p.button_text}
-          </button>
-        `;
-      });
-
-      document.getElementById('partsModal').classList.remove('hidden');
+        item.parts.forEach(p => {
+          listContainer.innerHTML += `
+            <button onclick="openUnlockModal('${p.id}')" class="bg-[#1f1a2e] hover:bg-rose-600/30 border border-gray-700/60 text-xs px-3 py-3 rounded-2xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition text-gray-200">
+              🎬 ${p.button_text}
+            </button>
+          `;
+        });
+        document.getElementById('partsModal').classList.remove('hidden');
+      } else if (item.parts && item.parts.length === 1) {
+        openUnlockModal(item.parts[0].id);
+      }
     }
 
     function closePartsModal() {
       document.getElementById('partsModal').classList.add('hidden');
     }
 
-    // ৩. পার্ট বাটনে ক্লিক করলে আনলক পপআপ খোলা
-    function triggerUnlock(partId) {
+    async function openUnlockModal(partId) {
       selectedPartId = partId;
       closePartsModal();
+
+      try {
+        const res = await fetch('/api/get-ad-gate');
+        const data = await res.json();
+        waitSeconds = data.wait_seconds || 7;
+        detectedBotUsername = data.bot_username || "";
+        document.getElementById('timerDurationText').innerText = waitSeconds;
+      } catch(e) {}
+
       document.getElementById('unlockModal').classList.remove('hidden');
     }
 
@@ -152,47 +198,52 @@
       document.getElementById('unlockModal').classList.add('hidden');
     }
 
-    // ৪. অ্যাড টাইমার কাউন্টডাউন এবং শতভাগ নিশ্চিত ইনবক্সে ভিডিও পাঠানো
-    async function startAdTimer() {
+    // ১০০% ফিক্সড Ad Unlock & Telegram Inbox Redirect Logic
+    async function startAdUnlock() {
       const btn = document.getElementById('adBtn');
+      const btnText = document.getElementById('adBtnText');
       btn.disabled = true;
 
-      // ব্যাকএন্ড থেকে ডিরেক্ট লিংক এবং টাইমার আনা
       const res = await fetch('/api/get-ad-gate');
       const data = await res.json();
+      detectedBotUsername = data.bot_username || detectedBotUsername;
 
-      // অ্যাড লিংক নতুন ট্যাবে খোলা
+      // ১. অ্যাড লিঙ্ক খোলা
       if (tg && tg.openLink) {
         tg.openLink(data.url);
       } else {
         window.open(data.url, '_blank');
       }
 
-      let timeLeft = data.wait_seconds || 7;
-      const countEl = document.getElementById('countdownDisplay');
-
+      // ২. টাইমার কাউন্টডাউন
+      let timeLeft = waitSeconds;
       const timer = setInterval(() => {
         timeLeft--;
-        countEl.innerText = timeLeft;
-        btn.innerText = `অপেক্ষা করুন (${timeLeft}s)...`;
+        btnText.innerText = `অপেক্ষা করুন (${timeLeft}s)...`;
 
         if (timeLeft <= 0) {
           clearInterval(timer);
-          btn.innerText = "✅ Unlocked! ইনবক্সে পাঠানো হচ্ছে...";
+          btnText.innerText = "✅ Unlocked! ইনবক্সে যাচ্ছি...";
 
-          // টেলিগ্রামের নিজস্ব মেথডে বটের ইনবক্সে পাঠানো
+          // ৩. টেলিগ্রাম চ্যাটে নিয়ে ভিডিও ফাইল নেওয়া
           setTimeout(() => {
-            const botUser = tg?.initDataUnsafe?.bot_username || "PomPomBDBot"; // আপনার বটের ইউজারনেম
-            const deepLink = `https://t.me/${botUser}?start=get_${selectedPartId}`;
-            
+            const finalUsername = detectedBotUsername || tg?.initDataUnsafe?.bot_username;
+            const deepLink = `https://t.me/${finalUsername}?start=get_${selectedPartId}`;
+
+            // মিনি অ্যাপ বন্ধ করে সরাসরি বটের চ্যাটে যাওয়া
             if (tg && tg.openTelegramLink) {
-              tg.openTelegramLink(deepLink); // টেলিগ্রামের অফিসিয়াল মেথড
+              tg.openTelegramLink(deepLink);
+              tg.close(); // মিনি অ্যাপটি বন্ধ হবে যাতে ইউজার ইনবক্সের ফাইল সরাসরি দেখতে পায়
             } else {
               window.location.href = deepLink;
             }
-          }, 600);
+          }, 500);
         }
       }, 1000);
+    }
+
+    function handleCoinUnlock() {
+      alert("⚠️ আপনার অ্যাকাউন্টে পর্যাপ্ত Coins নেই! Ad দেখে ফ্রিতে ভিডিওটি নিন।");
     }
 
     loadVideos();

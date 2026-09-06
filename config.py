@@ -3,8 +3,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# অ্যাপের নাম (এখানে নাম পরিবর্তন করলেই পুরো মিনি অ্যাপ ও বটে স্বয়ংক্রিয়ভাবে বদলে যাবে)
+# অ্যাপের নাম (এখানে নাম পরিবর্তন করলে পুরো অ্যাপ ও বটে স্বয়ংক্রিয়ভাবে বদলে যাবে)
 APP_NAME = os.getenv("APP_NAME", "Pom Pom BD")
+
+# আপনার Render বা Koyeb এর অ্যাপ ইউআরএল (এখানে আপনার ডোমেইন বসাবেন)
+WEBAPP_URL = os.getenv("WEBAPP_URL", "https://your-app-name.onrender.com")
 
 # সার্ভার পোর্ট (Render / Koyeb এর জন্য)
 PORT = int(os.getenv("PORT", 8080))

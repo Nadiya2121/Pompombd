@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{APP_NAME}}</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     .thumb-16-9 {
       aspect-ratio: 16 / 9;
@@ -13,88 +14,82 @@
     }
   </style>
 </head>
-<body class="bg-[#0b0b12] text-white font-sans pb-16 select-none">
+<body class="bg-[#0c0c14] text-white font-sans pb-16 select-none">
 
   <!-- হেডার -->
-  <header class="p-4 flex justify-between items-center border-b border-gray-800/80 sticky top-0 bg-[#0b0b12]/95 backdrop-blur z-40">
-    <div>
-      <h1 class="text-xl font-black bg-gradient-to-r from-rose-500 via-purple-500 to-amber-400 bg-clip-text text-transparent">
-        {{APP_NAME}}
-      </h1>
-      <p class="text-[11px] text-gray-400 font-mono">ID: <span id="userId">User</span></p>
-    </div>
-    
-    <!-- কয়েন ব্যালেন্স -->
-    <div class="bg-[#161622] px-3.5 py-1.5 rounded-full flex items-center gap-2 border border-amber-500/30 shadow-inner">
-      <span class="text-amber-400 text-sm">🪙</span>
-      <span id="coinBalance" class="text-yellow-400 font-bold text-sm">0</span>
+  <header class="p-4 flex justify-between items-center border-b border-gray-800/80 sticky top-0 bg-[#0c0c14]/95 backdrop-blur z-40">
+    <h1 class="text-xl font-black bg-gradient-to-r from-rose-500 via-purple-500 to-amber-400 bg-clip-text text-transparent">
+      {{APP_NAME}}
+    </h1>
+    <div class="bg-[#181826] px-3.5 py-1.5 rounded-full border border-amber-500/30 text-xs font-bold text-amber-400">
+      🔥 VIP Videos
     </div>
   </header>
 
-  <!-- ভিডিও কার্ড গ্রিড (YouTube Style) -->
-  <main class="p-4 space-y-5 max-w-md mx-auto" id="videoContainer">
-    <div class="text-center py-16 text-gray-500 text-sm">ভিডিও লোড হচ্ছে...</div>
+  <!-- ভিডিও কার্ড ও মাল্টি-পার্ট ডিসপ্লে -->
+  <main class="p-4 space-y-6 max-w-md mx-auto" id="videoContainer">
+    <div class="text-center py-16 text-gray-500 text-sm">ভিডিও ও পার্টস লোড হচ্ছে...</div>
   </main>
 
-  <!-- আনলক পপআপ মডাল -->
-  <div id="unlockModal" class="fixed inset-0 bg-black/85 flex items-end justify-center hidden z-50 p-4 transition-all">
-    <div class="bg-[#161624] border border-gray-800 w-full max-w-sm rounded-3xl p-6 text-center shadow-2xl relative">
-      <div class="w-12 h-12 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
-        <span class="text-2xl">🔒</span>
+  <!-- আনলক কাউন্টডাউন পপআপ -->
+  <div id="unlockModal" class="fixed inset-0 bg-black/90 flex items-center justify-center hidden z-50 p-4">
+    <div class="bg-[#161624] border border-gray-800 w-full max-w-sm rounded-3xl p-6 text-center shadow-2xl">
+      <div class="w-14 h-14 bg-rose-500/10 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
+        🔒
       </div>
-      <h3 class="text-lg font-bold text-gray-100">ভিডিও আনলক করুন</h3>
-      <p class="text-xs text-gray-400 mt-1 mb-5">নিচের যেকোনো একটি অপশন বেছে নিন</p>
+      <h3 class="text-lg font-bold">ভিডিওটি আনলক করুন</h3>
+      <p class="text-xs text-gray-400 mt-1 mb-5">বিজ্ঞাপন ওপেন হলে <span id="countdownDisplay" class="text-rose-400 font-bold">৭</span> সেকেন্ড অপেক্ষা করুন। এরপর অটোমেটিক ইনবক্সে ভিডিও পেয়ে যাবেন!</p>
 
-      <button onclick="handleAdUnlock()" class="w-full bg-gradient-to-r from-rose-500 to-pink-600 hover:opacity-90 py-3.5 rounded-xl font-bold text-sm mb-3 shadow-lg shadow-rose-500/20 flex items-center justify-center gap-2">
-        ⚡ Ad দেখে Unlock করুন
-      </button>
-      
-      <button onclick="handleCoinUnlock()" class="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:opacity-90 py-3.5 rounded-xl font-bold text-sm shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2">
-        🪙 ২০ Coins দিয়ে Unlock
+      <button id="adBtn" onclick="startAdUnlock()" class="w-full bg-gradient-to-r from-rose-500 to-amber-500 py-3.5 rounded-xl font-bold text-sm shadow-lg active:scale-95 transition">
+        🚀 Unlock & Get Video
       </button>
 
-      <button onclick="closeModal()" class="mt-4 text-xs text-gray-400 underline">বাতিল করুন</button>
+      <button onclick="closeModal()" class="mt-4 text-xs text-gray-500 underline block mx-auto">বাতিল করুন</button>
     </div>
   </div>
 
   <script>
-    let activeVideoId = null;
-
-    // ইউজার ভিজিট ট্র্যাক করা
-    fetch('/api/user/track-visit');
+    let activePartId = null;
+    let botUsername = ""; // টেলিগ্রাম বটের ইউজারনেম
 
     async function loadVideos() {
-      try {
-        const res = await fetch('/api/videos');
-        const videos = await res.json();
-        const container = document.getElementById('videoContainer');
-        container.innerHTML = '';
+      const res = await fetch('/api/videos-with-parts');
+      const data = await res.json();
+      const container = document.getElementById('videoContainer');
+      container.innerHTML = '';
 
-        if (videos.length === 0) {
-          container.innerHTML = '<div class="text-center py-12 text-gray-500 text-sm">কোনো ভিডিও পাওয়া যায়নি!</div>';
-          return;
-        }
+      if (data.length === 0) {
+        container.innerHTML = '<div class="text-center py-12 text-gray-500 text-sm">কোনো ভিডিও পাওয়া যায়নি!</div>';
+        return;
+      }
 
-        videos.forEach(v => {
-          container.innerHTML += `
-            <div class="bg-[#14141e] rounded-2xl overflow-hidden border border-gray-800/80 shadow-xl">
-              <img src="${v.thumbnail}" class="thumb-16-9" alt="Thumbnail" />
-              <div class="p-4">
-                <h2 class="font-bold text-sm line-clamp-2 mb-3 text-gray-200">${v.title}</h2>
-                <button onclick="openModal('${v._id}')" class="w-full bg-gradient-to-r from-rose-500 via-purple-600 to-amber-500 font-bold py-2.5 rounded-xl text-sm shadow-md active:scale-95 transition">
-                  ${v.button_text}
-                </button>
-              </div>
-            </div>
+      data.forEach(item => {
+        let partsHtml = '';
+        item.parts.forEach(p => {
+          partsHtml += `
+            <button onclick="openUnlockModal('${p.id}')" class="bg-[#202032] hover:bg-rose-600/80 border border-gray-700/60 text-xs px-3.5 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-1.5 transition active:scale-95 shadow-md">
+              <span>▶️</span> ${p.button_text}
+            </button>
           `;
         });
-      } catch (err) {
-        console.error(err);
-      }
+
+        container.innerHTML += `
+          <div class="bg-[#151522] rounded-3xl overflow-hidden border border-gray-800/80 shadow-2xl">
+            <img src="${item.thumbnail}" class="thumb-16-9" alt="${item.title}" />
+            <div class="p-4">
+              <h2 class="font-bold text-base text-gray-100 mb-3">${item.title}</h2>
+              <p class="text-[11px] text-gray-400 mb-2">উপলব্ধ পার্টসমূহ (ক্লিক করে আনলক করুন):</p>
+              <div class="grid grid-cols-2 gap-2">
+                ${partsHtml}
+              </div>
+            </div>
+          </div>
+        `;
+      });
     }
 
-    function openModal(vidId) {
-      activeVideoId = vidId;
+    function openUnlockModal(partId) {
+      activePartId = partId;
       document.getElementById('unlockModal').classList.remove('hidden');
     }
 
@@ -102,21 +97,38 @@
       document.getElementById('unlockModal').classList.add('hidden');
     }
 
-    // অ্যাড আনলক এবং ভিডিও ক্লিক ট্র্যাকিং
-    async function handleAdUnlock() {
-      if (activeVideoId) {
-        fetch('/api/video/track-click/' + activeVideoId, { method: 'POST' });
-      }
-      const res = await fetch('/api/get-ad-link');
-      const data = await res.json();
-      window.open(data.url, '_blank');
-      alert("বিজ্ঞাপন দেখা হচ্ছে... ৭ সেকেন্ড অপেক্ষা করুন!");
-      closeModal();
-    }
+    async function startAdUnlock() {
+      const btn = document.getElementById('adBtn');
+      btn.disabled = true;
 
-    function handleCoinUnlock() {
-      alert("পর্যাপ্ত কয়েন নেই! কয়েন কিনুন।");
-      closeModal();
+      // ১. ব্যাকএন্ড থেকে ডিরেক্ট লিংক এবং অ্যাডমিন কনফিগার করা টাইমার সেকেন্ড আনা
+      const res = await fetch('/api/get-ad-gate');
+      const data = await res.json();
+      
+      // ডিরেক্ট লিংক ওপেন করা
+      window.open(data.url, '_blank');
+
+      // ২. টাইমার কাউন্টডাউন শুরু
+      let timeLeft = data.wait_seconds || 7;
+      const countEl = document.getElementById('countdownDisplay');
+
+      const timer = setInterval(() => {
+        timeLeft--;
+        countEl.innerText = timeLeft;
+        btn.innerText = `অপেক্ষা করুন (${timeLeft}s)...`;
+
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          btn.innerText = "✅ Unlocked! ভিডিও পাঠানো হচ্ছে...";
+          
+          // ৩. ভিডিও ডেলিভারির জন্য সরাসরি টেলিগ্রাম বটে নিয়ে যাওয়া
+          setTimeout(() => {
+            // টেলিগ্রাম বটের ইনবক্সে /start get_PARTID কমান্ড সহ রিডাইরেক্ট হবে
+            const deepLink = `https://t.me/${window.Telegram.WebApp.initDataUnsafe.bot_username || 'YourBotUsername'}?start=get_${activePartId}`;
+            window.location.href = deepLink;
+          }, 1000);
+        }
+      }, 1000);
     }
 
     loadVideos();

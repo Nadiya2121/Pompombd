@@ -14,7 +14,7 @@ import config
 client = AsyncIOMotorClient(config.MONGO_URI)
 db = client.get_default_database("pompom_db")
 
-# টেলিগ্রাম বট
+# টেলিগ্রাম বট ইনিট
 bot = telebot.TeleBot(config.BOT_TOKEN, parse_mode="Markdown", threaded=True)
 
 def load_plugins():
@@ -32,28 +32,32 @@ def load_plugins():
             module.setup(app=app, bot=bot, db=db, config=config)
             print(f"🔌 [Plugin Loaded]: {module_name}")
 
-# সুপার স্টেবল ব্যাকগ্রাউন্ড বট পোলিং
+# ৪০৯ কনফ্লিক্ট বন্ধ করে ফ্রেশ পোলিং শুরু
 def run_bot_polling():
-    print(f"🤖 {config.APP_NAME} Bot Started Successfully!")
+    print(f"🤖 Resetting Bot Session to fix 409 Conflict...")
+    try:
+        bot.remove_webhook()
+    except Exception:
+        pass
+
+    print(f"🚀 {config.APP_NAME} Bot is now ACTIVE and Waiting for messages!")
     while True:
         try:
-            bot.polling(none_stop=True, interval=1, timeout=20)
+            bot.polling(none_stop=True, interval=2, timeout=30, skip_pending=True)
         except Exception as e:
-            print(f"⚠️ Bot Connection Error: {e}, Retrying in 3 seconds...")
             import time
-            time.sleep(3)
+            print(f"⚠️ Polling Exception: {e}, restarting loop in 5 seconds...")
+            time.sleep(5)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     load_plugins()
-    # ডেডিকেটেড থ্রেডে বট চালু
     t = threading.Thread(target=run_bot_polling, daemon=True)
     t.start()
     yield
 
 app = FastAPI(lifespan=lifespan)
 
-# মিনি অ্যাপ ভিউ
 @app.get("/", response_class=HTMLResponse)
 async def serve_home():
     with open("index.html", "r", encoding="utf-8") as f:

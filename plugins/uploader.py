@@ -23,38 +23,38 @@ def setup(app, bot, db, config):
             pass
         return config.DEFAULT_THUMBNAIL
 
-    # ১. /start হ্যান্ডলার (সাধারণ ইউজার ও ভিডিও ডেলিভারি রিকোয়েস্ট)
+    # ১. /start কমান্ড হ্যান্ডলার
     @bot.message_handler(commands=['start'])
     def send_welcome(message):
         chat_id = message.chat.id
-        text = message.text
+        text = message.text or ""
 
-        # যদি ইউজার অ্যাড শেষ করে ভিডিওর লিংক দিয়ে ইনবক্সে আসে (যেমন: /start get_VIDEOID)
+        # যদি ইউজার আনলক শেষে ভিডিও ফাইল নিতে আসে (যেমন: /start get_ID)
         if len(text.split()) > 1 and text.split()[1].startswith("get_"):
             video_part_id = text.split()[1].replace("get_", "")
             
-            def send_file_worker():
+            def deliver_file():
                 import asyncio
+                from bson import ObjectId
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 async def deliver():
-                    from bson import ObjectId
                     part = await db.video_parts.find_one({"_id": ObjectId(video_part_id)})
                     if part:
                         bot.send_video(
                             chat_id=chat_id,
                             video=part["file_id"],
-                            caption=f"🎉 **আপনার আনলক করা ভিডিও:**\n\n📌 {part['title']} ({part['button_text']})\n\nধন্যবাদ আমাদের সাথে থাকার জন্য! ❤️"
+                            caption=f"🎉 **আপনার আনলক করা ভিডিও:**\n\n📌 {part['title']} ({part['button_text']})\n\nধন্যবাদ! ❤️"
                         )
                     else:
-                        bot.send_message(chat_id, "❌ দুঃখিত, ভিডিওটি খুঁজে পাওয়া যায়নি!")
+                        bot.send_message(chat_id, "❌ দুঃখিত, ভিডিওটি ডাটাবেজে পাওয়া যায়নি!")
                 loop.run_until_complete(deliver())
                 loop.close()
 
-            threading.Thread(target=send_file_worker).start()
+            threading.Thread(target=deliver_file).start()
             return
 
-        # সাধারণ /start হলে ওয়েলকাম ব্যানার ও মিনি অ্যাপ বাটন
+        # সাধারণ /start হলে ওয়েলকাম ব্যানার এবং ওপেন অ্যাপ বাটন
         markup = types.InlineKeyboardMarkup()
         btn = types.InlineKeyboardButton(
             text="🔥 Watch Now (ভিডিও দেখুন) 🔥",
@@ -63,16 +63,26 @@ def setup(app, bot, db, config):
         markup.add(btn)
 
         try:
-            bot.send_photo(chat_id=chat_id, photo=config.WELCOME_POSTER, caption=config.WELCOME_TEXT, reply_markup=markup)
+            bot.send_photo(
+                chat_id=chat_id, 
+                photo=config.WELCOME_POSTER, 
+                caption=config.WELCOME_TEXT, 
+                reply_markup=markup
+            )
         except Exception:
-            bot.send_message(chat_id, config.WELCOME_TEXT, reply_markup=markup)
+            bot.send_message(
+                chat_id=chat_id, 
+                text=config.WELCOME_TEXT, 
+                reply_markup=markup
+            )
 
-    # ২. ধাপ ক: অ্যাডমিন ভিডিও ফরওয়ার্ড করলে
+    # ২. অ্যাডমিন ভিডিও ফরওয়ার্ড বা আপলোড করলে
     @bot.message_handler(content_types=['video'])
     def handle_video(message):
         user_id = message.from_user.id
         chat_id = message.chat.id
 
+        # অ্যাডমিন আইডি ভ্যালিডেশন
         if user_id not in config.ADMIN_IDS:
             return
 
@@ -87,42 +97,57 @@ def setup(app, bot, db, config):
             "step": "AWAIT_TITLE",
             "file_id": saved_file_id
         }
-        bot.send_message(chat_id, f"🎬 **[{config.APP_NAME}] ভিডিও পাওয়া গেছে!**\n\nএখন দয়া করে **ভিডিওর টাইটেল/নাম** লিখে পাঠান:")
+        bot.send_message(
+            chat_id, 
+            f"🎬 **[{config.APP_NAME}] ভিডিও পাওয়া গেছে!**\n\nএখন দয়া করে **ভিডিওর টাইটেল/নাম** লিখে পাঠান:"
+        )
 
-    # ৩. ধাপ খ ও ঘ: টেক্সট হ্যান্ডলার (টাইটেল এবং বাটন নেম)
+    # ৩. টেক্সট হ্যান্ডলার (টাইটেল এবং বাটন নেম নেওয়ার জন্য)
     @bot.message_handler(func=lambda msg: msg.chat.id in STATE and msg.text)
-    def handle_text(message):
+    def handle_text_steps(message):
         chat_id = message.chat.id
         user_id = message.from_user.id
 
         if user_id not in config.ADMIN_IDS:
             return
 
-        step = STATE[chat_id].get("step")
+        current_data = STATE.get(chat_id)
+        if not current_data:
+            return
 
+        step = current_data.get("step")
+
+        # ধাপ ক: টাইটেল গ্রহণ করা
         if step == "AWAIT_TITLE":
             STATE[chat_id]["title"] = message.text.strip()
             STATE[chat_id]["step"] = "AWAIT_THUMB"
-            bot.send_message(chat_id, "✅ টাইটেল পাওয়া গেছে!\n\nএখন ভিডিওর **পোস্টার/থাম্বনেইল (Photo)** পাঠান (বা স্কিপ করতে /skip লিখুন):")
+            bot.send_message(
+                chat_id, 
+                "✅ টাইটেল গ্রহণ করা হয়েছে!\n\nএখন ভিডিওর **পোস্টার/থাম্বনেইল (Photo)** পাঠান (না থাকলে /skip লিখুন):"
+            )
             return
 
+        # ধাপ খ: থাম্বনেইল স্কিপ করলে
         if step == "AWAIT_THUMB" and message.text.lower() == "/skip":
             STATE[chat_id]["thumbnail"] = config.DEFAULT_THUMBNAIL
             STATE[chat_id]["step"] = "AWAIT_BUTTON"
-            bot.send_message(chat_id, "⏩ থাম্বনেইল স্কিপ করা হয়েছে।\n\nএবার **বাটনের নাম বা পার্ট নম্বর** দিন (যেমন: Part 1, Part 2, Download):")
+            bot.send_message(
+                chat_id, 
+                "⏩ থাম্বনেইল স্কিপ হয়েছে।\n\nএবার **বাটনের নাম বা পার্ট নম্বর** দিন (যেমন: Part 1, Watch Video):"
+            )
             return
 
+        # ধাপ গ: বাটনের নাম পেলে পার্মানেন্ট সেভ
         if step == "AWAIT_BUTTON":
             button_name = message.text.strip()
             data = STATE[chat_id]
             del STATE[chat_id]
 
-            def save_series_worker():
+            def save_series_task():
                 import asyncio
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
                 async def do_save():
-                    # ১. চেক করা এই টাইটেলের মেইন ভিডিও আছে কিনা
                     existing = await db.series.find_one({"title": data["title"]})
                     if not existing:
                         series_id = await db.series.insert_one({
@@ -133,11 +158,9 @@ def setup(app, bot, db, config):
                         parent_id = series_id.inserted_id
                     else:
                         parent_id = existing["_id"]
-                        # থাম্বনেইল থাকলে আপডেট করা
                         if "thumbnail" in data and data["thumbnail"] != config.DEFAULT_THUMBNAIL:
                             await db.series.update_one({"_id": parent_id}, {"$set": {"thumbnail": data["thumbnail"]}})
 
-                    # ২. পার্ট ইনসার্ট করা
                     await db.video_parts.insert_one({
                         "series_id": parent_id,
                         "title": data["title"],
@@ -151,14 +174,14 @@ def setup(app, bot, db, config):
 
                 bot.send_message(
                     chat_id,
-                    f"🎉 **সফলভাবে সেভ হয়েছে!**\n\n📌 **সিরিজ:** {data['title']}\n🔘 **পার্ট/বাটন:** {button_name}\n🖼 **থাম্বনেইল:** রেডি!\n\nইউজাররা এখন মিনি অ্যাপে এই পার্টটি দেখতে পারবে।"
+                    f"🎉 **সফলভাবে সেভ হয়েছে!**\n\n📌 **সিরিজ:** {data['title']}\n🔘 **পার্ট/বাটন:** {button_name}\n\n🌐 মিনি অ্যাপ চেক করুন, ভিডিওটি যুক্ত হয়ে গেছে!"
                 )
 
-            threading.Thread(target=save_series_worker).start()
+            threading.Thread(target=save_series_task).start()
 
-    # ৪. ধাপ গ: থাম্বনেইল ছবি আসলে ImgBB ক্লাউডে আপলোড
+    # ৪. থাম্বনেইল ছবি পাঠানো হলে
     @bot.message_handler(content_types=['photo'])
-    def handle_photo(message):
+    def handle_thumbnail(message):
         chat_id = message.chat.id
         user_id = message.from_user.id
 
@@ -178,4 +201,7 @@ def setup(app, bot, db, config):
 
             STATE[chat_id]["thumbnail"] = cdn_url
             STATE[chat_id]["step"] = "AWAIT_BUTTON"
-            bot.send_message(chat_id, "✅ থাম্বনেইল ক্লাউডে সেভ হয়েছে!\n\nএবার **বাটনের নাম বা পার্ট নম্বর** দিন (যেমন: Part 1, Part 2, Download):")
+            bot.send_message(
+                chat_id, 
+                "✅ থাম্বনেইল ক্লাউডে সেভ হয়েছে!\n\nএবার **বাটনের নাম বা পার্ট নম্বর** দিন (যেমন: Part 1, Part 2, Download):"
+            )

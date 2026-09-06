@@ -7,7 +7,7 @@ load_dotenv()
 APP_NAME = os.getenv("APP_NAME", "Pom Pom BD")
 
 # আপনার Render বা Koyeb অ্যাপ লিঙ্ক
-WEBAPP_URL = os.getenv("WEBAPP_URL", "https://your-app-name.onrender.com")
+WEBAPP_URL = os.getenv("WEBAPP_URL", "https://pompombd.onrender.com")
 
 # ওয়েব অ্যাডমিন প্যানেলের সিকিউর পাসওয়ার্ড
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin1234")

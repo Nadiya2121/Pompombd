@@ -2,15 +2,15 @@ from fastapi import Request
 from fastapi.responses import HTMLResponse
 from bson import ObjectId
 
-def setup(app, tg_app, db, config):
+def setup(app, bot, db, config):
 
-    # ১. সিকিউর অ্যাডমিন পেজ রুট (https://your-domain/admin)
+    # ১. অ্যাডমিন ড্যাশবোর্ড পেজ (URL: /admin)
     @app.get("/admin", response_class=HTMLResponse)
     async def serve_admin_panel():
         with open("admin.html", "r", encoding="utf-8") as f:
             return f.read()
 
-    # ২. অ্যাডমিন পাসওয়ার্ড ভেরিফিকেশন API
+    # ২. অ্যাডমিন লগইন
     @app.post("/api/admin/login")
     async def admin_login(req: Request):
         data = await req.json()
@@ -18,7 +18,7 @@ def setup(app, tg_app, db, config):
             return {"success": True}
         return {"success": False}
 
-    # ৩. সব ভিডিও লোড করা (মিনি অ্যাপ ও অ্যাডমিন উভয়ের জন্য)
+    # ৩. সব ভিডিও লিস্ট পাওয়া
     @app.get("/api/videos")
     async def get_videos():
         videos = await db.videos.find().to_list(length=300)
@@ -26,9 +26,9 @@ def setup(app, tg_app, db, config):
             v["_id"] = str(v["_id"])
         return videos
 
-    # ৪. ভিডিওর থাম্বনেইল, টাইটেল, বাটন এডিট
+    # ৪. ভিডিও এডিট (থাম্বনেইল, টাইটেল, বাটন)
     @app.post("/api/admin/edit-video")
-    async def edit_video(req: Request, pass_key: str = None):
+    async def edit_video(req: Request):
         data = await req.json()
         vid_id = data.get("id")
         await db.videos.update_one(
@@ -41,13 +41,13 @@ def setup(app, tg_app, db, config):
         )
         return {"status": "success"}
 
-    # ৫. ভিডিও ডিলিট করা
+    # ৫. ভিডিও ডিলিট
     @app.delete("/api/admin/delete-video/{vid_id}")
     async def delete_video(vid_id: str):
         await db.videos.delete_one({"_id": ObjectId(vid_id)})
         return {"status": "success"}
 
-    # ৬. ডিরেক্ট লিংকগুলো লিস্ট করা
+    # ৬. ডিরেক্ট লিংক লিস্ট
     @app.get("/api/admin/links")
     async def get_links():
         links = await db.direct_links.find().to_list(length=100)
@@ -55,7 +55,7 @@ def setup(app, tg_app, db, config):
             l["_id"] = str(l["_id"])
         return links
 
-    # ৭. নতুন ডিরেক্ট লিংক অ্যাড করা
+    # ৭. নতুন ডিরেক্ট লিংক যোগ করা
     @app.post("/api/admin/add-link")
     async def add_link(req: Request):
         data = await req.json()
@@ -65,7 +65,7 @@ def setup(app, tg_app, db, config):
             return {"status": "success"}
         return {"status": "error"}
 
-    # ৮. ডিরেক্ট লিংক ডিলিট করা
+    # ৮. ডিরেক্ট লিংক ডিলিট
     @app.delete("/api/admin/delete-link/{link_id}")
     async def delete_link(link_id: str):
         await db.direct_links.delete_one({"_id": ObjectId(link_id)})

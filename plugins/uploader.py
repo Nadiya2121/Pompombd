@@ -2,16 +2,17 @@ import threading
 import requests
 from pymongo import MongoClient
 from telebot import types
+from fastapi import Request
 
 STATE = {}
 
 def setup(app, bot, db, config):
 
-    # সরাসরি সিঙ্ক্রোনাস ক্লায়েন্ট (থ্রেড ক্র্যাশ ও হ্যাং হওয়া বন্ধ করবে)
+    # স্টেবল এবং নন-ব্লকিং সিঙ্ক্রোনাস ডাটাবেজ কানেকশন
     sync_client = MongoClient(config.MONGO_URI)
     sync_db = sync_client.get_default_database("pompom_db")
 
-    # ImgBB তে ইমেজ আপলোড
+    # ImgBB ক্লাউড ইমেজ আপলোড হেল্পার
     def upload_to_imgbb(file_path):
         try:
             if not config.IMGBB_API_KEY or config.IMGBB_API_KEY == "your_imgbb_api_key_here":
@@ -29,20 +30,55 @@ def setup(app, bot, db, config):
             pass
         return config.DEFAULT_THUMBNAIL
 
-    # অটোমেটিক ইউনিক সিরিয়াল কোড জেনারেটর (101 থেকে শুরু হবে)
+    # ইউনিক সিরিজ কোড জেনারেটর (#101 থেকে শুরু)
     def get_next_series_code():
         last = sync_db.series.find_one(sort=[("code", -1)])
         if last and "code" in last:
             return last["code"] + 1
         return 101
 
-    # ১. /start কমান্ড
+    # =========================================================================
+    # ১. ডিরেক্ট ভিডিও ডেলিভারি API (মিনি অ্যাপের টাইমার শেষ হতেই ভিডিও পাঠাবে)
+    # =========================================================================
+    @app.post("/api/deliver-video")
+    async def deliver_video_api(req: Request):
+        data = await req.json()
+        part_id = data.get("part_id")
+        user_id = data.get("user_id")
+
+        if not part_id or not user_id:
+            return {"status": "error", "message": "Missing parameters"}
+
+        def send_file_task():
+            try:
+                from bson import ObjectId
+                part = sync_db.video_parts.find_one({"_id": ObjectId(part_id)})
+                if part:
+                    bot.send_video(
+                        chat_id=int(user_id),
+                        video=part["file_id"],
+                        caption=(
+                            f"🎉 **আপনার আনলক করা ভিডিও:**\n\n"
+                            f"📌 **সিরিজ:** {part.get('series_title', 'Video')}\n"
+                            f"🔘 **পার্ট:** {part['button_text']}\n\n"
+                            f"আমাদের সাথে থাকার জন্য ধন্যবাদ! ❤️"
+                        )
+                    )
+            except Exception as e:
+                print(f"Direct Delivery Error: {e}")
+
+        threading.Thread(target=send_file_task).start()
+        return {"status": "success"}
+
+    # =========================================================================
+    # ২. টেলিগ্রাম বট /start কমান্ড হ্যান্ডলার
+    # =========================================================================
     @bot.message_handler(commands=['start'])
     def send_welcome(message):
         chat_id = message.chat.id
         text = message.text or ""
 
-        # ইউজার আনলক করে ভিডিও নিতে আসলে
+        # যদি কোনো ইউজার ডিপলিংক দিয়ে ভিডিও নিতে আসে (যেমন: /start get_ID)
         if len(text.split()) > 1 and text.split()[1].startswith("get_"):
             part_id = text.split()[1].replace("get_", "")
             try:
@@ -52,15 +88,18 @@ def setup(app, bot, db, config):
                     bot.send_video(
                         chat_id=chat_id,
                         video=part["file_id"],
-                        caption=f"🎉 **আপনার আনলক করা ভিডিও:**\n\n📌 {part.get('series_title', 'Video')} - {part['button_text']}\n\nধন্যবাদ আমাদের সাথে থাকার জন্য! ❤️"
+                        caption=(
+                            f"🎉 **আপনার আনলক করা ভিডিও:**\n\n"
+                            f"📌 **সিরিজ:** {part.get('series_title', 'Video')}\n"
+                            f"🔘 **পার্ট:** {part['button_text']}\n\n"
+                            f"আমাদের সাথে থাকার জন্য ধন্যবাদ! ❤️"
+                        )
                     )
-                else:
-                    bot.send_message(chat_id, "❌ দুঃখিত, ভিডিওটি পাওয়া যায়নি!")
-            except Exception as e:
-                bot.send_message(chat_id, f"❌ ত্রুটি: {str(e)}")
-            return
+                    return
+            except Exception:
+                pass
 
-        # সাধারণ /start হলে
+        # সাধারণ /start হলে আকর্ষণীয় ওয়েলকাম ব্যানার এবং ওপেন অ্যাপ বাটন
         markup = types.InlineKeyboardMarkup()
         btn = types.InlineKeyboardButton(
             text="🔥 Watch Now (ভিডিও দেখুন) 🔥",
@@ -69,11 +108,22 @@ def setup(app, bot, db, config):
         markup.add(btn)
 
         try:
-            bot.send_photo(chat_id=chat_id, photo=config.WELCOME_POSTER, caption=config.WELCOME_TEXT, reply_markup=markup)
+            bot.send_photo(
+                chat_id=chat_id,
+                photo=config.WELCOME_POSTER,
+                caption=config.WELCOME_TEXT,
+                reply_markup=markup
+            )
         except Exception:
-            bot.send_message(chat_id, config.WELCOME_TEXT, reply_markup=markup)
+            bot.send_message(
+                chat_id=chat_id,
+                text=config.WELCOME_TEXT,
+                reply_markup=markup
+            )
 
-    # ২. অ্যাডমিন ভিডিও পাঠালে
+    # =========================================================================
+    # ৩. ভিডিও ফরওয়ার্ড/আপলোড হ্যান্ডলার (শুধু অ্যাডমিনের জন্য)
+    # =========================================================================
     @bot.message_handler(content_types=['video'])
     def handle_video(message):
         user_id = message.from_user.id
@@ -82,7 +132,7 @@ def setup(app, bot, db, config):
         if user_id not in config.ADMIN_IDS:
             return
 
-        # DB চ্যানেলে ব্যাকআপ
+        # প্রাইভেট DB চ্যানেলে ফাইল অটো-ফরওয়ার্ড ব্যাকআপ
         try:
             backup_msg = bot.forward_message(config.DB_CHANNEL_ID, chat_id, message.message_id)
             saved_file_id = backup_msg.video.file_id
@@ -94,7 +144,6 @@ def setup(app, bot, db, config):
             "step": "CHOOSE_TYPE"
         }
 
-        # নতুন সিরিজ নাকি আগের পার্ট সিলেক্ট করার অপশন
         markup = types.ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
         markup.add("🆕 সম্পূর্ণ নতুন ভিডিও", "➕ আগের ভিডিওর পরবর্তী পার্ট")
 
@@ -104,7 +153,9 @@ def setup(app, bot, db, config):
             reply_markup=markup
         )
 
-    # ৩. স্টেপ বাই স্টেপ টেক্সট হ্যান্ডলার
+    # =========================================================================
+    # ৪. স্টেপ বাই স্টেপ টেক্সট ইনপুট হ্যান্ডলার
+    # =========================================================================
     @bot.message_handler(func=lambda msg: msg.chat.id in STATE and msg.text)
     def handle_admin_inputs(message):
         chat_id = message.chat.id
@@ -116,13 +167,13 @@ def setup(app, bot, db, config):
         step = STATE[chat_id].get("step")
         text = message.text.strip()
 
-        # ধাপ ক: ভিডিওর ধরন বাছাই
+        # ধাপ ক: নতুন সিরিজ নাকি পুরনো সিরিজ নির্বাচন
         if step == "CHOOSE_TYPE":
             if "নতুন" in text:
                 STATE[chat_id]["is_new"] = True
                 STATE[chat_id]["step"] = "AWAIT_TITLE"
                 bot.send_message(
-                    chat_id, 
+                    chat_id,
                     "📝 এখন **ভিডিওর একটি সুন্দর টাইটেল/নাম** লিখে পাঠান:",
                     reply_markup=types.ReplyKeyboardRemove()
                 )
@@ -130,67 +181,60 @@ def setup(app, bot, db, config):
                 STATE[chat_id]["is_new"] = False
                 STATE[chat_id]["step"] = "AWAIT_CODE"
                 bot.send_message(
-                    chat_id, 
+                    chat_id,
                     "🔢 আগের ভিডিওটির **ইউনিক কোড** নম্বরটি দিন (যেমন: 101, 102):",
                     reply_markup=types.ReplyKeyboardRemove()
                 )
             return
 
-        # ধাপ খ (পুরনো ভিডিওর জন্য): কোড দিয়ে মূল ভিডিও খোঁজা
+        # ধাপ খ: পুরনো ভিডিওর কোড দিয়ে ডাটাবেজ থেকে খুঁজে বের করা
         if step == "AWAIT_CODE":
             if not text.isdigit():
                 bot.send_message(chat_id, "❌ শুধুমাত্র সংখ্যায় কোড দিন (যেমন: 101):")
                 return
-            
             code = int(text)
             series = sync_db.series.find_one({"code": code})
             if not series:
-                bot.send_message(chat_id, f"❌ কোড #{code} এর কোনো ভিডিও খুঁজে পাওয়া যায়নি! আবার সঠিক কোড দিন:")
+                bot.send_message(chat_id, f"❌ কোড #{code} এর কোনো ভিডিও পাওয়া যায়নি! আবার সঠিক কোড দিন:")
                 return
             
             STATE[chat_id]["parent_id"] = series["_id"]
             STATE[chat_id]["series_title"] = series["title"]
             STATE[chat_id]["step"] = "AWAIT_PART_NUM"
             bot.send_message(
-                chat_id, 
+                chat_id,
                 f"✅ ভিডিও পাওয়া গেছে: **{series['title']}**\n\nএখন শুধু **পার্ট নম্বর** লিখে পাঠান (যেমন: 2 বা 3):"
             )
             return
 
-        # ধাপ গ (নতুন ভিডিওর জন্য): টাইটেল গ্রহণ
+        # ধাপ গ: নতুন সিরিজের টাইটেল গ্রহণ করা
         if step == "AWAIT_TITLE":
             STATE[chat_id]["title"] = text
             STATE[chat_id]["step"] = "AWAIT_THUMB"
             bot.send_message(
-                chat_id, 
+                chat_id,
                 "✅ টাইটেল সেট হয়েছে!\n\nএখন ভিডিওর **পোস্টার/থাম্বনেইল (Photo)** পাঠান (না থাকলে /skip লিখুন):"
             )
             return
 
-        # ধাপ ঘ (নতুন ভিডিওর জন্য): থাম্বনেইল স্কিপ করলে
+        # ধাপ ঘ: থাম্বনেইল স্কিপ করলে
         if step == "AWAIT_THUMB" and text.lower() == "/skip":
             STATE[chat_id]["thumbnail"] = config.DEFAULT_THUMBNAIL
             STATE[chat_id]["step"] = "AWAIT_PART_NUM"
             bot.send_message(
-                chat_id, 
+                chat_id,
                 "⏩ থাম্বনেইল স্কিপ হয়েছে।\n\nএখন শুধু **পার্ট নম্বর** লিখে দিন (যেমন: শুধু 1 লিখলেই হবে):"
             )
             return
 
-        # ধাপ ঙ: পার্ট নম্বর পেয়ে সেভ করা (মেইন লজিক)
+        # ধাপ ঙ: পার্ট নম্বর নিয়ে ডাটাবেজে পার্মানেন্ট সেভ
         if step == "AWAIT_PART_NUM":
-            # স্মার্ট বাটন ফরম্যাট: ইউজার '1' দিলে হয়ে যাবে '🎬 Video Part 1'
             part_clean = text.replace("Part", "").replace("part", "").strip()
-            if part_clean.isdigit():
-                button_name = f"🎬 Video Part {part_clean}"
-            else:
-                button_name = text  # যদি নিজে কোনো নাম লিখতে চায়
-
+            button_name = f"🎬 Video Part {part_clean}" if part_clean.isdigit() else text
             data = STATE[chat_id]
             del STATE[chat_id]
 
             try:
-                # নতুন সিরিজ হলে আগে সিরিজ তৈরি হবে
                 if data.get("is_new"):
                     new_code = get_next_series_code()
                     series_id = sync_db.series.insert_one({
@@ -202,13 +246,12 @@ def setup(app, bot, db, config):
                     series_title = data["title"]
                     code_display = f"#{new_code}"
                 else:
-                    # পুরনো সিরিজ হলে
                     series_id = data["parent_id"]
                     series_title = data["series_title"]
                     series_obj = sync_db.series.find_one({"_id": series_id})
                     code_display = f"#{series_obj.get('code', 'N/A')}"
 
-                # পার্ট সেভ করা
+                # ভিডিও পার্ট সেভ
                 sync_db.video_parts.insert_one({
                     "series_id": series_id,
                     "series_title": series_title,
@@ -217,19 +260,20 @@ def setup(app, bot, db, config):
                     "clicks": 0
                 })
 
-                # সফলভাবে কনফার্মেশন মেসেজ
                 bot.send_message(
                     chat_id,
                     f"🎉 **সফলভাবে সেভ হয়েছে!**\n\n"
-                    f"🔢 **ইউনিক কোড:** {code_display}\n"
+                    f"🔢 **সিরিজ কোড:** {code_display}\n"
                     f"📌 **ভিডিওর নাম:** {series_title}\n"
-                    f"🔘 **বাটন নাম:** {button_name}\n\n"
-                    f"💡 পরবর্তীতে এই ভিডিওতে নতুন পার্ট যোগ করতে কোড {code_display} ব্যবহার করুন।"
+                    f"🔘 **বাটন:** {button_name}\n\n"
+                    f"🌐 মিনি অ্যাপ এবং অ্যাডমিন প্যানেলে ভিডিওটি এখন লাইভ!"
                 )
             except Exception as e:
-                bot.send_message(chat_id, f"❌ সেভ করতে সমস্যা হয়েছে: {str(e)}")
+                bot.send_message(chat_id, f"❌ সেভ করতে ত্রুটি হয়েছে: {str(e)}")
 
-    # ৪. থাম্বনেইল ছবি পাঠানো হলে
+    # =========================================================================
+    # ৫. থাম্বনেইল ছবি হ্যান্ডলার
+    # =========================================================================
     @bot.message_handler(content_types=['photo'])
     def handle_thumbnail(message):
         chat_id = message.chat.id
@@ -252,6 +296,6 @@ def setup(app, bot, db, config):
             STATE[chat_id]["thumbnail"] = cdn_url
             STATE[chat_id]["step"] = "AWAIT_PART_NUM"
             bot.send_message(
-                chat_id, 
+                chat_id,
                 "✅ থাম্বনেইল ক্লাউডে সেভ হয়েছে!\n\nএবার শুধু **পার্ট নম্বর** লিখে পাঠান (যেমন: শুধু 1 লিখলেই হবে):"
             )

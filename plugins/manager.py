@@ -16,7 +16,7 @@ def setup(app, bot, db, config):
             return {"success": True}
         return {"success": False}
 
-    # স্ট্যাটাস এবং কনটেন্ট প্রটেকশন সেটিংস লোড
+    # স্ট্যাটাস এবং সমস্ত সেটিংস লোড
     @app.get("/api/admin/stats")
     async def get_stats():
         users_count = await db.analytics.find_one({"type": "traffic"})
@@ -30,10 +30,11 @@ def setup(app, bot, db, config):
             "videos": series_count,
             "links": links_count,
             "protect_content": settings.get("protect_content", True) if settings else True,
-            "wait_seconds": settings.get("wait_seconds", 7) if settings else 7
+            "wait_seconds": settings.get("wait_seconds", 7) if settings else 7,
+            "auto_delete_minutes": settings.get("auto_delete_minutes", 10) if settings else 10
         }
 
-    # কনটেন্ট প্রটেকশন অন/অফ টগল করার API
+    # কনটেন্ট প্রটেকশন অন/অফ
     @app.post("/api/admin/toggle-protection")
     async def toggle_protection(req: Request):
         data = await req.json()
@@ -44,6 +45,18 @@ def setup(app, bot, db, config):
             upsert=True
         )
         return {"status": "success", "protect_content": status}
+
+    # অটো-ডিলিট মিনিট সেট করার API
+    @app.post("/api/admin/set-autodelete")
+    async def set_autodelete(req: Request):
+        data = await req.json()
+        minutes = int(data.get("minutes", 10))
+        await db.settings.update_one(
+            {"type": "global"},
+            {"$set": {"auto_delete_minutes": minutes}},
+            upsert=True
+        )
+        return {"status": "success", "minutes": minutes}
 
     @app.delete("/api/admin/delete-series/{series_id}")
     async def delete_series(series_id: str):

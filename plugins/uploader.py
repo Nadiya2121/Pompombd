@@ -1,3 +1,4 @@
+import time
 import threading
 import requests
 from pymongo import MongoClient
@@ -11,7 +12,6 @@ def setup(app, bot, db, config):
     sync_client = MongoClient(config.MONGO_URI)
     sync_db = sync_client.get_default_database("pompom_db")
 
-    # ImgBB সুপার ফাস্ট ইমেজ আপলোডার
     def upload_to_imgbb(file_path):
         try:
             if not config.IMGBB_API_KEY or config.IMGBB_API_KEY == "your_imgbb_api_key_here":
@@ -24,7 +24,6 @@ def setup(app, bot, db, config):
                 )
                 data = res.json()
                 if data.get("success"):
-                    # medium বা direct display url যাতে পলকে লোড হয়
                     return data["data"].get("medium", {}).get("url") or data["data"]["url"]
         except Exception:
             pass
@@ -36,15 +35,40 @@ def setup(app, bot, db, config):
             return last["code"] + 1
         return 101
 
-    # কনটেন্ট প্রটেকশন অন কি অফ তা ডাটাবেজ থেকে চেক করার হেল্পার
-    def is_protect_content_enabled():
+    # কনফিগারেশন হেল্পার
+    def get_settings():
         settings = sync_db.settings.find_one({"type": "global"})
-        if settings:
-            return settings.get("protect_content", True)
-        return True
+        if not settings:
+            return {"protect_content": True, "auto_delete_minutes": 10}
+        return {
+            "protect_content": settings.get("protect_content", True),
+            "auto_delete_minutes": settings.get("auto_delete_minutes", 10) # ডিফল্ট ১০ মিনিট
+        }
+
+    # নির্দিষ্ট সময় পর ভিডিও স্বয়ংক্রিয়ভাবে ডিলিট করার ব্যাকগ্রাউন্ড টাস্ক
+    def schedule_auto_delete(chat_id, message_id, minutes):
+        if minutes <= 0:
+            return  # ০ হলে ডিলিট হবে না
+
+        def delete_task():
+            time.sleep(minutes * 60)
+            try:
+                bot.delete_message(chat_id=chat_id, message_id=message_id)
+                # ডিলিট হওয়ার পর একটি ছোট নোটিশ
+                notice = bot.send_message(
+                    chat_id, 
+                    "⚠️ **সময় শেষ! পূর্বের ভিডিও ফাইলটি স্বয়ংক্রিয়ভাবে মুছে ফেলা হয়েছে।**\nআবার দেখতে চাইলে মিনি অ্যাপ থেকে আনলক করুন।"
+                )
+                # এই নোটিশটিও ১ মিনিট পর উধাও হয়ে যাবে
+                time.sleep(60)
+                bot.delete_message(chat_id=chat_id, message_id=notice.message_id)
+            except Exception as e:
+                print(f"Auto Delete Error: {e}")
+
+        threading.Thread(target=delete_task, daemon=True).start()
 
     # =========================================================================
-    # ১. ডিরেক্ট ভিডিও ডেলিভারি API (ফরওয়ার্ড প্রোটেকশন চেক সহ)
+    # ১. ডিরেক্ট ভিডিও ডেলিভারি API (অটো-ডিলিট টাইমার সহ)
     # =========================================================================
     @app.post("/api/deliver-video")
     async def deliver_video_api(req: Request):
@@ -60,20 +84,26 @@ def setup(app, bot, db, config):
                 from bson import ObjectId
                 part = sync_db.video_parts.find_one({"_id": ObjectId(part_id)})
                 if part:
-                    # অ্যাডমিন প্যানেলের সেটিং অনুযায়ী প্রোটেক্ট হবে
-                    protect_mode = is_protect_content_enabled()
+                    cfg = get_settings()
+                    del_min = cfg["auto_delete_minutes"]
+                    timer_text = f"\n\n⏳ **এই ভিডিওটি {del_min} মিনিট পর স্বয়ংক্রিয়ভাবে মুছে যাবে!**" if del_min > 0 else ""
 
-                    bot.send_video(
+                    sent_msg = bot.send_video(
                         chat_id=int(user_id),
                         video=part["file_id"],
-                        protect_content=protect_mode,  # <-- অন থাকলে ফরওয়ার্ড ও ডাউনলোড বন্ধ থাকবে
+                        protect_content=cfg["protect_content"],
                         caption=(
                             f"🎉 **আপনার আনলক করা ভিডিও:**\n\n"
                             f"📌 **সিরিজ:** {part.get('series_title', 'Video')}\n"
-                            f"🔘 **পার্ট:** {part['button_text']}\n\n"
-                            f"আমাদের সাথে থাকার জন্য ধন্যবাদ! ❤️"
+                            f"🔘 **পার্ট:** {part['button_text']}"
+                            f"{timer_text}\n\nআমাদের সাথে থাকার জন্য ধন্যবাদ! ❤️"
                         )
                     )
+
+                    # অটো ডিলিট শিডিউল করা
+                    if del_min > 0:
+                        schedule_auto_delete(int(user_id), sent_msg.message_id, del_min)
+
             except Exception as e:
                 print(f"Direct Delivery Error: {e}")
 
@@ -88,25 +118,29 @@ def setup(app, bot, db, config):
         chat_id = message.chat.id
         text = message.text or ""
 
-        # যদি ডিপলিংক দিয়ে ভিডিও নিতে আসে
         if len(text.split()) > 1 and text.split()[1].startswith("get_"):
             part_id = text.split()[1].replace("get_", "")
             try:
                 from bson import ObjectId
                 part = sync_db.video_parts.find_one({"_id": ObjectId(part_id)})
                 if part:
-                    protect_mode = is_protect_content_enabled()
-                    bot.send_video(
+                    cfg = get_settings()
+                    del_min = cfg["auto_delete_minutes"]
+                    timer_text = f"\n\n⏳ **এই ভিডিওটি {del_min} মিনিট পর স্বয়ংক্রিয়ভাবে মুছে যাবে!**" if del_min > 0 else ""
+
+                    sent_msg = bot.send_video(
                         chat_id=chat_id,
                         video=part["file_id"],
-                        protect_content=protect_mode,
+                        protect_content=cfg["protect_content"],
                         caption=(
                             f"🎉 **আপনার আনলক করা ভিডিও:**\n\n"
                             f"📌 **সিরিজ:** {part.get('series_title', 'Video')}\n"
-                            f"🔘 **পার্ট:** {part['button_text']}\n\n"
-                            f"আমাদের সাথে থাকার জন্য ধন্যবাদ! ❤️"
+                            f"🔘 **পার্ট:** {part['button_text']}"
+                            f"{timer_text}\n\nআমাদের সাথে থাকার জন্য ধন্যবাদ! ❤️"
                         )
                     )
+                    if del_min > 0:
+                        schedule_auto_delete(chat_id, sent_msg.message_id, del_min)
                     return
             except Exception:
                 pass
@@ -128,9 +162,7 @@ def setup(app, bot, db, config):
         except Exception:
             bot.send_message(chat_id, config.WELCOME_TEXT, reply_markup=markup)
 
-    # =========================================================================
-    # ৩. ভিডিও আপলোড হ্যান্ডলার
-    # =========================================================================
+    # ৩. ভিডিও আপলোড
     @bot.message_handler(content_types=['video'])
     def handle_video(message):
         user_id = message.from_user.id
@@ -159,9 +191,7 @@ def setup(app, bot, db, config):
             reply_markup=markup
         )
 
-    # =========================================================================
     # ৪. টেক্সট হ্যান্ডলার
-    # =========================================================================
     @bot.message_handler(func=lambda msg: msg.chat.id in STATE and msg.text)
     def handle_admin_inputs(message):
         chat_id = message.chat.id
@@ -177,19 +207,11 @@ def setup(app, bot, db, config):
             if "নতুন" in text:
                 STATE[chat_id]["is_new"] = True
                 STATE[chat_id]["step"] = "AWAIT_TITLE"
-                bot.send_message(
-                    chat_id,
-                    "📝 এখন **ভিডিওর একটি সুন্দর টাইটেল/নাম** লিখে পাঠান:",
-                    reply_markup=types.ReplyKeyboardRemove()
-                )
+                bot.send_message(chat_id, "📝 এখন **ভিডিওর একটি সুন্দর টাইটেল/নাম** লিখে পাঠান:", reply_markup=types.ReplyKeyboardRemove())
             elif "আগের" in text:
                 STATE[chat_id]["is_new"] = False
                 STATE[chat_id]["step"] = "AWAIT_CODE"
-                bot.send_message(
-                    chat_id,
-                    "🔢 আগের ভিডিওটির **ইউনিক কোড** নম্বরটি দিন (যেমন: 101, 102):",
-                    reply_markup=types.ReplyKeyboardRemove()
-                )
+                bot.send_message(chat_id, "🔢 আগের ভিডিওটির **ইউনিক কোড** নম্বরটি দিন (যেমন: 101, 102):", reply_markup=types.ReplyKeyboardRemove())
             return
 
         if step == "AWAIT_CODE":
@@ -205,28 +227,19 @@ def setup(app, bot, db, config):
             STATE[chat_id]["parent_id"] = series["_id"]
             STATE[chat_id]["series_title"] = series["title"]
             STATE[chat_id]["step"] = "AWAIT_PART_NUM"
-            bot.send_message(
-                chat_id,
-                f"✅ ভিডিও পাওয়া গেছে: **{series['title']}**\n\nএখন শুধু **পার্ট নম্বর** লিখে পাঠান (যেমন: 2 বা 3):"
-            )
+            bot.send_message(chat_id, f"✅ ভিডিও পাওয়া গেছে: **{series['title']}**\n\nএখন শুধু **পার্ট নম্বর** লিখে পাঠান (যেমন: 2 বা 3):")
             return
 
         if step == "AWAIT_TITLE":
             STATE[chat_id]["title"] = text
             STATE[chat_id]["step"] = "AWAIT_THUMB"
-            bot.send_message(
-                chat_id,
-                "✅ টাইটেল সেট হয়েছে!\n\nএখন ভিডিওর **পোস্টার/থাম্বনেইল (Photo)** পাঠান (না থাকলে /skip লিখুন):"
-            )
+            bot.send_message(chat_id, "✅ টাইটেল সেট হয়েছে!\n\nএখন ভিডিওর **পোস্টার/থাম্বনেইল (Photo)** পাঠান (না থাকলে /skip লিখুন):")
             return
 
         if step == "AWAIT_THUMB" and text.lower() == "/skip":
             STATE[chat_id]["thumbnail"] = config.DEFAULT_THUMBNAIL
             STATE[chat_id]["step"] = "AWAIT_PART_NUM"
-            bot.send_message(
-                chat_id,
-                "⏩ থাম্বনেইল স্কিপ হয়েছে।\n\nএখন শুধু **পার্ট নম্বর** লিখে দিন (যেমন: শুধু 1 লিখলেই হবে):"
-            )
+            bot.send_message(chat_id, "⏩ থাম্বনেইল স্কিপ হয়েছে।\n\nএখন শুধু **পার্ট নম্বর** লিখে দিন (যেমন: শুধু 1 লিখলেই হবে):")
             return
 
         if step == "AWAIT_PART_NUM":
@@ -271,9 +284,7 @@ def setup(app, bot, db, config):
             except Exception as e:
                 bot.send_message(chat_id, f"❌ সেভ করতে ত্রুটি: {str(e)}")
 
-    # =========================================================================
     # ৫. থাম্বনেইল হ্যান্ডলার
-    # =========================================================================
     @bot.message_handler(content_types=['photo'])
     def handle_thumbnail(message):
         chat_id = message.chat.id
@@ -295,7 +306,4 @@ def setup(app, bot, db, config):
 
             STATE[chat_id]["thumbnail"] = cdn_url
             STATE[chat_id]["step"] = "AWAIT_PART_NUM"
-            bot.send_message(
-                chat_id,
-                "✅ থাম্বনেইল ক্লাউডে সেভ হয়েছে!\n\nএবার শুধু **পার্ট নম্বর** লিখে পাঠান (যেমন: শুধু 1 লিখলেই হবে):"
-            )
+            bot.send_message(chat_id, "✅ থাম্বনেইল ক্লাউডে সেভ হয়েছে!\n\nএবার শুধু **পার্ট নম্বর** লিখে পাঠান (যেমন: 1):")

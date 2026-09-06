@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{APP_NAME}}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* ইউটিউব স্টাইল ১৬:৯ অনুপাত স্বয়ংক্রিয়ভাবে ক্রপ ও ফিট হবে */
+    .thumb-16-9 {
+      aspect-ratio: 16 / 9;
+      object-fit: cover;
+      width: 100%;
+    }
+  </style>
+</head>
+<body class="bg-[#0e0e13] text-white font-sans pb-16">
+
+  <!-- হেডার -->
+  <header class="p-4 flex justify-between items-center border-b border-gray-800/80 sticky top-0 bg-[#0e0e13]/90 backdrop-blur z-40">
+    <div>
+      <h1 class="text-xl font-black bg-gradient-to-r from-rose-500 via-purple-500 to-amber-400 bg-clip-text text-transparent">
+        {{APP_NAME}}
+      </h1>
+      <p class="text-[11px] text-gray-400 font-mono tracking-wider">ID: <span id="userId">5370676246</span></p>
+    </div>
+    
+    <div class="flex items-center gap-2">
+      <!-- অ্যাডমিন মোড টগল বাটন -->
+      <button onclick="toggleAdminPanel()" class="text-xs bg-gray-800 text-gray-300 px-2.5 py-1.5 rounded-lg border border-gray-700">⚙️ প্যানেল</button>
+      
+      <!-- কয়েন ব্যালেন্স -->
+      <div class="bg-gray-800/90 px-3 py-1.5 rounded-full flex items-center gap-1.5 border border-amber-500/30 shadow-inner">
+        <span class="text-amber-400 text-sm">🪙</span>
+        <span id="coinBalance" class="text-yellow-400 font-bold text-sm">0</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ওয়েব অ্যাডমিন কন্ট্রোল প্যানেল (হিডেন থাকবে, 'প্যানেল' চাপলে খুলবে) -->
+  <div id="adminPanel" class="hidden p-4 bg-[#161622] border-b border-rose-500/20 max-w-md mx-auto">
+    <h3 class="text-sm font-bold text-rose-400 mb-2">⚡ ডিরেক্ট লিংক ম্যানেজমেন্ট</h3>
+    <div class="flex gap-2 mb-4">
+      <input id="newLinkInput" type="text" placeholder="https://monetag.com/direct-link..." class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500" />
+      <button onclick="addNewLink()" class="bg-rose-600 hover:bg-rose-700 text-xs px-3 py-2 rounded-lg font-bold">Add</button>
+    </div>
+  </div>
+
+  <!-- ভিডিও কার্ড গ্রিড (YouTube Style) -->
+  <main class="p-4 space-y-5 max-w-md mx-auto" id="videoContainer">
+    <div class="text-center py-10 text-gray-500 text-sm">ভিডিও লোড হচ্ছে...</div>
+  </main>
+
+  <!-- ভিডিও আনলক পপআপ (স্ক্রিনশটের মতো ডার্ক নিয়ন ডিজাইন) -->
+  <div id="unlockModal" class="fixed inset-0 bg-black/85 flex items-end justify-center hidden z-50 p-4 transition-all">
+    <div class="bg-[#181824] border border-gray-800 w-full max-w-sm rounded-3xl p-6 text-center shadow-2xl relative">
+      <div class="w-12 h-12 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto mb-3">
+        <span class="text-2xl">🔒</span>
+      </div>
+      <h3 class="text-lg font-bold text-gray-100">ভিডিও আনলক করুন</h3>
+      <p class="text-xs text-gray-400 mt-1 mb-5">নিচের যেকোনো একটি অপশন বেছে নিন</p>
+
+      <!-- অ্যাড আনলক অপশন -->
+      <button onclick="handleAdUnlock()" class="w-full bg-gradient-to-r from-rose-500 to-pink-600 hover:opacity-90 py-3.5 rounded-xl font-bold text-sm mb-3 shadow-lg shadow-rose-500/20 flex items-center justify-center gap-2">
+        ⚡ Ad দেখে Unlock করুন
+      </button>
+      
+      <!-- কয়েন আনলক অপশন -->
+      <button onclick="handleCoinUnlock()" class="w-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:opacity-90 py-3.5 rounded-xl font-bold text-sm shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2">
+        🪙 ২০ Coins দিয়ে Unlock
+      </button>
+
+      <button onclick="closeModal()" class="mt-4 text-xs text-gray-400 underline">বাতিল করুন</button>
+    </div>
+  </div>
+
+  <!-- ভিডিও এডিট মডাল -->
+  <div id="editModal" class="fixed inset-0 bg-black/85 flex items-center justify-center hidden z-50 p-4">
+    <div class="bg-[#181824] border border-gray-800 w-full max-w-sm rounded-2xl p-5">
+      <h3 class="font-bold text-sm mb-3 text-rose-400">ভিডিও এডিট করুন</h3>
+      <input type="hidden" id="editVidId">
+      <label class="text-[11px] text-gray-400">টাইটেল:</label>
+      <input id="editTitle" class="w-full bg-gray-900 border border-gray-700 p-2 rounded text-xs mb-2">
+      <label class="text-[11px] text-gray-400">বাটন নেম:</label>
+      <input id="editBtn" class="w-full bg-gray-900 border border-gray-700 p-2 rounded text-xs mb-2">
+      <label class="text-[11px] text-gray-400">16:9 থাম্বনেইল URL:</label>
+      <input id="editThumb" class="w-full bg-gray-900 border border-gray-700 p-2 rounded text-xs mb-4">
+      <div class="flex gap-2">
+        <button onclick="saveVideoEdit()" class="w-full bg-rose-600 text-xs py-2 rounded font-bold">Save</button>
+        <button onclick="closeEditModal()" class="w-full bg-gray-700 text-xs py-2 rounded">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentVideos = [];
+
+    async function loadVideos() {
+      try {
+        const res = await fetch('/api/videos');
+        currentVideos = await res.json();
+        const container = document.getElementById('videoContainer');
+        container.innerHTML = '';
+
+        if (currentVideos.length === 0) {
+          container.innerHTML = '<div class="text-center py-12 text-gray-500 text-sm">কোনো ভিডিও পাওয়া যায়নি! বটে ভিডিও আপলোড করুন।</div>';
+          return;
+        }
+
+        currentVideos.forEach(v => {
+          container.innerHTML += `
+            <div class="bg-[#15151f] rounded-2xl overflow-hidden border border-gray-800 shadow-xl">
+              <!-- ইউটিউব সাইজ ১৬:৯ থাম্বনেইল -->
+              <div class="relative">
+                <img src="${v.thumbnail}" class="thumb-16-9" alt="Thumbnail" />
+                <button onclick="openEditModal('${v._id}')" class="absolute top-2 right-2 bg-black/60 text-[10px] px-2 py-1 rounded backdrop-blur border border-white/20">Edit</button>
+              </div>
+              <div class="p-4">
+                <h2 class="font-bold text-sm line-clamp-2 mb-3 text-gray-200">${v.title}</h2>
+                <button onclick="openModal('${v.file_id}')" class="w-full bg-gradient-to-r from-rose-500 via-purple-600 to-amber-500 font-bold py-2.5 rounded-xl text-sm shadow-md">
+                  ${v.button_text}
+                </button>
+              </div>
+            </div>
+          `;
+        });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function openModal() {
+      document.getElementById('unlockModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('unlockModal').classList.add('hidden');
+    }
+
+    // স্মার্ট ডিরেক্ট লিংক ওপেন
+    async function handleAdUnlock() {
+      const res = await fetch('/api/get-ad-link');
+      const data = await res.json();
+      window.open(data.url, '_blank');
+      alert("বিজ্ঞাপন দেখা হচ্ছে... ৭ সেকেন্ড অপেক্ষা করুন!");
+      closeModal();
+    }
+
+    function handleCoinUnlock() {
+      alert("পর্যাপ্ত কয়েন নেই! কয়েন কিনুন।");
+      closeModal();
+    }
+
+    function toggleAdminPanel() {
+      document.getElementById('adminPanel').classList.toggle('hidden');
+    }
+
+    async function addNewLink() {
+      const input = document.getElementById('newLinkInput');
+      if (!input.value) return;
+      await fetch('/api/admin/add-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: input.value })
+      });
+      alert('নতুন ডিরেক্ট লিংক যুক্ত হয়েছে!');
+      input.value = '';
+    }
+
+    function openEditModal(id) {
+      const v = currentVideos.find(item => item._id === id);
+      if (!v) return;
+      document.getElementById('editVidId').value = v._id;
+      document.getElementById('editTitle').value = v.title;
+      document.getElementById('editBtn').value = v.button_text;
+      document.getElementById('editThumb').value = v.thumbnail;
+      document.getElementById('editModal').classList.remove('hidden');
+    }
+
+    function closeEditModal() {
+      document.getElementById('editModal').classList.add('hidden');
+    }
+
+    async function saveVideoEdit() {
+      const id = document.getElementById('editVidId').value;
+      const title = document.getElementById('editTitle').value;
+      const button_text = document.getElementById('editBtn').value;
+      const thumbnail = document.getElementById('editThumb').value;
+
+      await fetch('/api/admin/edit-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, title, button_text, thumbnail })
+      });
+
+      closeEditModal();
+      loadVideos();
+    }
+
+    loadVideos();
+  </script>
+</body>
+</html>

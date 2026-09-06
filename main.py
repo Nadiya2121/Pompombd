@@ -10,14 +10,13 @@ import telebot
 import uvicorn
 import config
 
-# MongoDB ক্লাউড কানেকশন
+# MongoDB কানেকশন
 client = AsyncIOMotorClient(config.MONGO_URI)
 db = client.get_default_database("pompom_db")
 
 # টেলিগ্রাম বট
-bot = telebot.TeleBot(config.BOT_TOKEN, parse_mode="Markdown")
+bot = telebot.TeleBot(config.BOT_TOKEN, parse_mode="Markdown", threaded=True)
 
-# প্লাগইন লোডার ফাংশন
 def load_plugins():
     plugin_files = sorted(glob.glob("plugins/*.py"))
     for filepath in plugin_files:
@@ -29,29 +28,32 @@ def load_plugins():
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         
-        # প্রতিটি প্লাগইনে ঠিকঠাক আর্গুমেন্ট পাঠানো
         if hasattr(module, "setup"):
             module.setup(app=app, bot=bot, db=db, config=config)
             print(f"🔌 [Plugin Loaded]: {module_name}")
 
-def start_bot():
-    print(f"🤖 {config.APP_NAME} Bot is Polling...")
-    try:
-        bot.infinity_polling(skip_pending=True)
-    except Exception as e:
-        print(f"Bot Polling Error: {e}")
+# সুপার স্টেবল ব্যাকগ্রাউন্ড বট পোলিং
+def run_bot_polling():
+    print(f"🤖 {config.APP_NAME} Bot Started Successfully!")
+    while True:
+        try:
+            bot.polling(none_stop=True, interval=1, timeout=20)
+        except Exception as e:
+            print(f"⚠️ Bot Connection Error: {e}, Retrying in 3 seconds...")
+            import time
+            time.sleep(3)
 
-# আধুনিক FastAPI Lifespan (কোনো Deprecation Warning আসবে না)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     load_plugins()
-    bot_thread = threading.Thread(target=start_bot, daemon=True)
-    bot_thread.start()
+    # ডেডিকেটেড থ্রেডে বট চালু
+    t = threading.Thread(target=run_bot_polling, daemon=True)
+    t.start()
     yield
 
 app = FastAPI(lifespan=lifespan)
 
-# মিনি অ্যাপ পেজ রেন্ডার
+# মিনি অ্যাপ ভিউ
 @app.get("/", response_class=HTMLResponse)
 async def serve_home():
     with open("index.html", "r", encoding="utf-8") as f:

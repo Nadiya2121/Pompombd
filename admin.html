@@ -7,7 +7,6 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    /* ইউটিউব স্টাইল ১৬:৯ সিনেমাটিক ফ্রেম (ছবি কাটবে না) */
     .video-thumb-container {
       aspect-ratio: 16 / 9;
       width: 100%;
@@ -49,7 +48,7 @@
         <h1 class="text-2xl font-black bg-gradient-to-r from-rose-500 to-amber-400 bg-clip-text text-transparent">
           Pom Pom BD Control Hub
         </h1>
-        <p class="text-xs text-gray-400">ভিডিও সিরিজ, কনটেন্ট প্রোটেকশন ও অ্যাড রোটেশন</p>
+        <p class="text-xs text-gray-400">ভিডিও সিরিজ, অটো-ডিলিট ও সিকিউরিটি ম্যানেজার</p>
       </div>
       <button onclick="logout()" class="text-xs bg-red-500/10 text-red-400 border border-red-500/20 px-4 py-2 rounded-xl font-bold hover:bg-red-500/20 transition">
         <i class="fa-solid fa-right-from-bracket mr-1"></i> লগআউট
@@ -76,32 +75,50 @@
       </div>
     </div>
 
-    <!-- গ্লোবাল সিকিউরিটি ও টাইমার কার্ড -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-      <div class="bg-[#12121b] border border-gray-800/80 p-5 rounded-2xl flex justify-between items-center shadow-lg">
+    <!-- গ্লোবাল সিকিউরিটি, অটো-ডিলিট ও টাইমার কার্ডস -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+      
+      <!-- ১. কনটেন্ট প্রটেকশন সুইচ -->
+      <div class="bg-[#12121b] border border-gray-800/80 p-5 rounded-2xl flex flex-col justify-between shadow-lg">
         <div>
-          <h4 class="text-sm font-bold text-rose-400 flex items-center gap-2">
-            <i class="fa-solid fa-lock"></i> ভিডিও Forward & Save Protection
+          <h4 class="text-sm font-bold text-rose-400 flex items-center gap-2 mb-1">
+            <i class="fa-solid fa-lock"></i> Forward & Save Protection
           </h4>
-          <p class="text-xs text-gray-400 mt-0.5">অন রাখলে ইউজার ভিডিও ফরওয়ার্ড বা গ্যালারিতে সেভ করতে পারবে না</p>
+          <p class="text-[11px] text-gray-400">ভিডিও ফরওয়ার্ড ও গ্যালারিতে সেভ বন্ধ রাখতে অন রাখুন</p>
         </div>
-        <div>
-          <button id="protectionBtn" onclick="toggleProtection()" class="px-4 py-2 rounded-xl font-bold text-xs transition">Loading...</button>
+        <div class="mt-4">
+          <button id="protectionBtn" onclick="toggleProtection()" class="w-full py-2 rounded-xl font-bold text-xs transition">Loading...</button>
         </div>
       </div>
 
-      <div class="bg-[#12121b] border border-gray-800/80 p-5 rounded-2xl flex justify-between items-center shadow-lg">
+      <!-- ২. অটো-ডিলিট টাইমার কন্ট্রোল -->
+      <div class="bg-[#12121b] border border-gray-800/80 p-5 rounded-2xl flex flex-col justify-between shadow-lg">
         <div>
-          <h4 class="text-sm font-bold text-amber-400 flex items-center gap-2">
-            <i class="fa-solid fa-stopwatch"></i> Ad Gate Countdown Timer
+          <h4 class="text-sm font-bold text-purple-400 flex items-center gap-2 mb-1">
+            <i class="fa-solid fa-trash-clock"></i> Auto-Delete Timer (ইনবক্স)
           </h4>
-          <p class="text-xs text-gray-400 mt-0.5">কত সেকেন্ড অপেক্ষা করাতে চান?</p>
+          <p class="text-[11px] text-gray-400">কত মিনিট পর ইউজারদের ইনবক্স থেকে ভিডিও মুছে যাবে? (০ = কখনো মুছবে না)</p>
         </div>
-        <div class="flex gap-2">
-          <input id="timerSeconds" type="number" value="7" min="1" max="60" class="w-16 bg-[#1b1b26] border border-gray-700 rounded-xl px-2 py-1.5 text-center text-sm font-bold text-white focus:outline-none">
-          <button onclick="updateTimer()" class="bg-amber-500 hover:bg-amber-600 text-black text-xs px-3 py-1.5 rounded-xl font-bold transition">Save</button>
+        <div class="flex gap-2 mt-4">
+          <input id="autoDeleteMinutes" type="number" value="10" min="0" max="1440" class="w-full bg-[#1b1b26] border border-gray-700 rounded-xl px-3 py-1.5 text-center text-sm font-bold text-white focus:outline-none">
+          <button onclick="updateAutoDelete()" class="bg-purple-600 hover:bg-purple-700 text-white text-xs px-4 py-1.5 rounded-xl font-bold transition">Save</button>
         </div>
       </div>
+
+      <!-- ৩. অ্যাড গেট টাইমার -->
+      <div class="bg-[#12121b] border border-gray-800/80 p-5 rounded-2xl flex flex-col justify-between shadow-lg">
+        <div>
+          <h4 class="text-sm font-bold text-amber-400 flex items-center gap-2 mb-1">
+            <i class="fa-solid fa-stopwatch"></i> Ad Wait Timer
+          </h4>
+          <p class="text-[11px] text-gray-400">বিজ্ঞাপনে কত সেকেন্ড অপেক্ষা করতে হবে?</p>
+        </div>
+        <div class="flex gap-2 mt-4">
+          <input id="timerSeconds" type="number" value="7" min="1" max="60" class="w-full bg-[#1b1b26] border border-gray-700 rounded-xl px-3 py-1.5 text-center text-sm font-bold text-white focus:outline-none">
+          <button onclick="updateTimer()" class="bg-amber-500 hover:bg-amber-600 text-black text-xs px-4 py-1.5 rounded-xl font-bold transition">Save</button>
+        </div>
+      </div>
+
     </div>
 
     <!-- ডিরেক্ট লিংক ম্যানেজার -->
@@ -209,6 +226,7 @@
       document.getElementById('statAdClicks').innerText = data.ad_clicks || 0;
       document.getElementById('statActiveLinks').innerText = data.links || 0;
       document.getElementById('timerSeconds').value = data.wait_seconds || 7;
+      document.getElementById('autoDeleteMinutes').value = data.auto_delete_minutes !== undefined ? data.auto_delete_minutes : 10;
 
       isProtectionEnabled = data.protect_content;
       updateProtectionUI();
@@ -218,10 +236,10 @@
       const btn = document.getElementById('protectionBtn');
       if (isProtectionEnabled) {
         btn.innerText = "🛡️ ON (Protected)";
-        btn.className = "px-4 py-2 rounded-xl font-bold text-xs bg-emerald-600/20 text-emerald-400 border border-emerald-500/30";
+        btn.className = "w-full py-2 rounded-xl font-bold text-xs bg-emerald-600/20 text-emerald-400 border border-emerald-500/30";
       } else {
         btn.innerText = "🔓 OFF (Allow Forward)";
-        btn.className = "px-4 py-2 rounded-xl font-bold text-xs bg-red-600/20 text-red-400 border border-red-500/30";
+        btn.className = "w-full py-2 rounded-xl font-bold text-xs bg-red-600/20 text-red-400 border border-red-500/30";
       }
     }
 
@@ -237,6 +255,16 @@
       updateProtectionUI();
     }
 
+    async function updateAutoDelete() {
+      const min = document.getElementById('autoDeleteMinutes').value;
+      await fetch('/api/admin/set-autodelete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ minutes: min })
+      });
+      alert(min == 0 ? 'অটো-ডিলিট বন্ধ করা হয়েছে!' : 'ভিডিও এখন ' + min + ' মিনিট পর স্বয়ংক্রিয়ভাবে মুছে যাবে!');
+    }
+
     async function updateTimer() {
       const sec = document.getElementById('timerSeconds').value;
       await fetch('/api/admin/set-timer', {
@@ -244,7 +272,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ seconds: sec })
       });
-      alert('টাইমার সফলভাবে ' + sec + ' সেকেন্ডে সেট হয়েছে!');
+      alert('অ্যাড টাইমার ' + sec + ' সেকেন্ডে সেট হয়েছে!');
     }
 
     async function loadLinks() {

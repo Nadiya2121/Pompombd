@@ -5,21 +5,37 @@ STATE = {}
 
 def setup(app, tg_app, db, config):
 
-    # ১. ইউজার /start কমান্ড দিলে অ্যাপ ওপেন করার বাটন আসবে
+    # ১. ইউজার /start কমান্ড দিলে ব্যানার পোস্টার সহ আকর্ষণীয় ওয়েলকাম মেসেজ যাবে
     async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+        chat_id = update.effective_chat.id
+        
+        # মিনি অ্যাপ ওপেন করার বাটন
         keyboard = [
             [
                 InlineKeyboardButton(
-                    text=f"🚀 Open {config.APP_NAME}", 
-                    web_app=WebAppInfo(url=config.WEBAPP_URL)  # config.py থেকে লিংক টানবে
+                    text="🔥 Watch Now (ভিডিও দেখুন) 🔥", 
+                    web_app=WebAppInfo(url=config.WEBAPP_URL)
                 )
             ]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
-        await update.message.reply_text(
-            f"স্বাগতম **{config.APP_NAME}** এ!\n\nভিডিও দেখতে বা ডাউনলোড করতে নিচের বাটনে ক্লিক করুন 👇",
-            reply_markup=reply_markup
-        )
+
+        try:
+            # পোস্টার ছবি সহ ক্যাপশনে টেক্সট এবং বাটন পাঠানো হচ্ছে
+            await context.bot.send_photo(
+                chat_id=chat_id,
+                photo=config.WELCOME_POSTER,
+                caption=config.WELCOME_TEXT,
+                parse_mode="Markdown",
+                reply_markup=reply_markup
+            )
+        except Exception as e:
+            # কোনো কারণে ছবির লিংকে সমস্যা হলে সরাসরি টেক্সট ও বাটন পাঠাবে
+            await update.message.reply_text(
+                config.WELCOME_TEXT,
+                parse_mode="Markdown",
+                reply_markup=reply_markup
+            )
 
     # ২. অ্যাডমিন ভিডিও আপলোড এবং স্টেপ-বাই-স্টেপ প্রসেস
     async def handle_video_flow(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -37,7 +53,7 @@ def setup(app, tg_app, db, config):
                 "file_id": update.message.video.file_id
             }
             await update.message.reply_text(
-                f"🎬 **[{config.APP_NAME}] ভিডিও শনাক্ত হয়েছে!**\n\nএখন দয়া করে **ভিডিওর টাইটেল/নাম** লিখে পাঠান:"
+                f"🎬 **[{config.APP_NAME}] ভিডিও পাওয়া গেছে!**\n\nএখন দয়া করে **ভিডিওর টাইটেল/নাম** লিখে পাঠান:"
             )
             return
 
@@ -46,7 +62,7 @@ def setup(app, tg_app, db, config):
             STATE[chat_id]["title"] = update.message.text
             STATE[chat_id]["step"] = "AWAIT_BUTTON"
             await update.message.reply_text(
-                "✅ টাইটেল যুক্ত হয়েছে!\n\nএবার **বাটনের নাম বা পার্ট নম্বর** দিন (যেমন: Part 1, Full Video, কোম্পানি নাম):"
+                "✅ টাইটেল গ্রহণ করা হয়েছে!\n\nএবার **বাটনের নাম বা পার্ট নম্বর** দিন (যেমন: Part 1, Watch Video, ডাউনলোড পার্ট ১):"
             )
             return
 
@@ -65,12 +81,12 @@ def setup(app, tg_app, db, config):
 
             del STATE[chat_id]
             await update.message.reply_text(
-                f"🎉 **{config.APP_NAME} এ সফলভাবে যুক্ত হয়েছে!**\n\n"
+                f"🎉 **{config.APP_NAME} এ সফলভাবে ভিডিও সেভ হয়েছে!**\n\n"
                 f"📌 **টাইটেল:** {title}\n"
                 f"🔘 **বাটন:** {button_name}\n"
-                f"🌐 ওয়েব প্যানেল থেকে থাম্বনেইল পরিবর্তন করতে পারবেন।"
+                f"🌐 ওয়েব প্যানেল (/admin) থেকে যেকোনো সময় এর 16:9 থাম্বনেইল পরিবর্তন করতে পারবেন।"
             )
 
-    # হ্যান্ডলার যুক্ত করা
+    # হ্যান্ডলার রেজিস্টার
     tg_app.add_handler(CommandHandler("start", start_command))
     tg_app.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, handle_video_flow))

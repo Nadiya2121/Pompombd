@@ -1,50 +1,49 @@
-from fastapi import Request
+import random
 from bson import ObjectId
+from fastapi import Request
 
 def setup(app, bot, db, config):
 
-    # ইউজার ট্র্যাকিং API
-    @app.get("/api/user/track-visit")
-    async def track_user():
-        await db.analytics.update_one(
-            {"type": "traffic"},
-            {"$inc": {"active_users": 1}},
-            upsert=True
-        )
-        return {"status": "ok"}
+    # মিনি অ্যাপের জন্য সিরিজ ও সব পার্ট একসাথে লোড করা
+    @app.get("/api/videos-with-parts")
+    async def get_series_and_parts():
+        series_list = await db.series.find().sort("_id", -1).to_list(100)
+        result = []
+        for s in series_list:
+            parts = await db.video_parts.find({"series_id": s["_id"]}).to_list(50)
+            parts_clean = [{"id": str(p["_id"]), "button_text": p["button_text"], "clicks": p.get("clicks", 0)} for p in parts]
+            result.append({
+                "id": str(s["_id"]),
+                "title": s["title"],
+                "thumbnail": s["thumbnail"],
+                "parts": parts_clean
+            })
+        return result
 
-    # ভিডিও ক্লিক ট্র্যাকিং API
-    @app.post("/api/video/track-click/{vid_id}")
-    async def track_video_click(vid_id: str):
-        try:
-            await db.videos.update_one(
-                {"_id": ObjectId(vid_id)},
-                {"$inc": {"clicks": 1}}
-            )
-        except Exception:
-            pass
-        return {"status": "ok"}
+    # স্মার্ট অ্যাড লিংক এবং অ্যাডমিন টাইমার ডিউরেশন
+    @app.get("/api/get-ad-gate")
+    async def get_ad_gate():
+        settings = await db.settings.find_one({"type": "global"})
+        wait_seconds = settings.get("wait_seconds", 7) if settings else 7
 
-    # স্মার্ট ডিরেক্ট লিংক রোটেশন API
-    @app.get("/api/get-ad-link")
-    async def get_ad_link():
-        links = await db.direct_links.find({}).to_list(length=200)
-        
+        links = await db.direct_links.find().to_list(100)
         if not links:
-            return {"url": "https://google.com"}
+            return {"url": "https://google.com", "wait_seconds": wait_seconds}
 
-        # স্মার্ট অ্যালগরিদম: সবচেয়ে কম ক্লিক পড়া লিংকটি ইউজার আগে পাবে (Round-Robin)
         links.sort(key=lambda x: x.get("clicks", 0))
         selected = links[0]
-
-        # ক্লিক কাউন্ট বাড়ানো
         await db.direct_links.update_one({"_id": selected["_id"]}, {"$inc": {"clicks": 1}})
         
-        # ওভারঅল অ্যাড ক্লিক অ্যানালিটিক্স আপডেট
-        await db.analytics.update_one(
-            {"type": "traffic"},
-            {"$inc": {"total_ad_clicks": 1}},
+        return {"url": selected["url"], "wait_seconds": wait_seconds}
+
+    # অ্যাডমিন প্যানেল থেকে টাইমার সেকেন্ড আপডেট করার API
+    @app.post("/api/admin/set-timer")
+    async def set_timer(req: Request):
+        data = await req.json()
+        seconds = int(data.get("seconds", 7))
+        await db.settings.update_one(
+            {"type": "global"},
+            {"$set": {"wait_seconds": seconds}},
             upsert=True
         )
-
-        return {"url": selected["url"]}
+        return {"status": "success"}

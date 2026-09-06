@@ -16,13 +16,13 @@ ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin1234")
 PORT = int(os.getenv("PORT", 8080))
 
 # টেলিগ্রাম বট টোকেন
-BOT_TOKEN = os.getenv("BOT_TOKEN", "YOUR_TELEGRAM_BOT_TOKEN")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "8933889793:AAE547Gis4FhQUJ0L9y0hCKo9U5m6XzhfcE")
 
 # MongoDB Atlas URL
-MONGO_URI = os.getenv("MONGO_URI", "YOUR_MONGODB_ATLAS_URL")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://manogog673:manogog673@cluster0.ot1qt.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
 
 # অ্যাডমিনের টেলিগ্রাম আইডি
-ADMIN_IDS = [int(i.strip()) for i in os.getenv("ADMIN_IDS", "123456789").split(",") if i.strip()]
+ADMIN_IDS = [int(i.strip()) for i in os.getenv("ADMIN_IDS", "8090888302").split(",") if i.strip()]
 
 # ডিফল্ট 16:9 ভিডিও থাম্বনেইল
 DEFAULT_THUMBNAIL = "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=1280&h=720&fit=crop"

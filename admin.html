@@ -14,22 +14,22 @@
     }
   </style>
 </head>
-<body class="bg-[#08080d] text-gray-200 font-sans pb-20">
+<body class="bg-[#08080d] text-gray-200 font-sans pb-24 select-none">
 
-  <!-- ১. সিকিউর লগইন সেকশন -->
+  <!-- ================= ১. সিকিউর লগইন সেকশন ================= -->
   <div id="loginSection" class="min-h-screen flex items-center justify-center p-4">
     <div class="bg-[#12121b] border border-gray-800 p-8 rounded-3xl w-full max-w-sm text-center shadow-2xl">
       <div class="w-16 h-16 bg-rose-500/10 text-rose-500 rounded-2xl flex items-center justify-center mx-auto mb-4 text-2xl">
         <i class="fa-solid fa-shield-halved"></i>
       </div>
       <h2 class="text-2xl font-black text-white mb-1">Super Admin</h2>
-      <p class="text-xs text-gray-400 mb-6">Pom Pom BD কন্ট্রোল সিস্টেমে লগইন করুন</p>
+      <p class="text-xs text-gray-400 mb-6">Pom Pom BD কন্ট্রোল সিস্টেমে প্রবেশ করুন</p>
       <input id="adminPass" type="password" placeholder="অ্যাডমিন পাসওয়ার্ড দিন" class="w-full bg-[#1b1b26] border border-gray-700 rounded-xl px-4 py-3 text-sm text-white mb-4 focus:outline-none focus:border-rose-500">
-      <button onclick="loginAdmin()" class="w-full bg-gradient-to-r from-rose-500 to-purple-600 text-white font-bold py-3 rounded-xl shadow-lg">প্রবেশ করুন</button>
+      <button onclick="loginAdmin()" class="w-full bg-gradient-to-r from-rose-500 to-purple-600 text-white font-bold py-3 rounded-xl shadow-lg hover:opacity-95 transition">প্রবেশ করুন</button>
     </div>
   </div>
 
-  <!-- ২. মূল নেক্সট-লেভেল ড্যাশবোর্ড -->
+  <!-- ================= ২. মূল ড্যাশবোর্ড সেকশন ================= -->
   <div id="dashboardSection" class="hidden max-w-6xl mx-auto p-4 sm:p-6">
     
     <!-- হেডার -->
@@ -38,47 +38,61 @@
         <h1 class="text-2xl font-black bg-gradient-to-r from-rose-500 to-amber-400 bg-clip-text text-transparent">
           Pom Pom BD Control Hub
         </h1>
-        <p class="text-xs text-gray-400">রিয়েলটাইম ভিডিও ও অ্যাড পারফরম্যান্স ট্র্যাকিং</p>
+        <p class="text-xs text-gray-400">সিরিজ, ভিডিও পার্টস এবং অ্যাড রোটেশন ম্যানেজমেন্ট</p>
       </div>
-      <button onclick="logout()" class="text-xs bg-red-500/10 text-red-400 border border-red-500/20 px-4 py-2 rounded-xl font-bold hover:bg-red-500/20">
+      <button onclick="logout()" class="text-xs bg-red-500/10 text-red-400 border border-red-500/20 px-4 py-2 rounded-xl font-bold hover:bg-red-500/20 transition">
         <i class="fa-solid fa-right-from-bracket mr-1"></i> লগআউট
       </button>
     </header>
 
-    <!-- রিয়েলটাইম অ্যানালিটিক্স কাউন্টার কার্ডস -->
+    <!-- রিয়েলটাইম অ্যানালিটিক্স কার্ডস -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-      <div class="bg-[#12121b] border border-gray-800/80 p-4 rounded-2xl">
+      <div class="bg-[#12121b] border border-gray-800/80 p-4 rounded-2xl shadow-md">
         <p class="text-[11px] text-gray-400 font-medium">অ্যাক্টিভ ইউজার ট্রাফিক</p>
         <h3 class="text-2xl font-black text-emerald-400 mt-1" id="statUsers">0</h3>
       </div>
-      <div class="bg-[#12121b] border border-gray-800/80 p-4 rounded-2xl">
-        <p class="text-[11px] text-gray-400 font-medium">মোট ভিডিও সংখ্যা</p>
+      <div class="bg-[#12121b] border border-gray-800/80 p-4 rounded-2xl shadow-md">
+        <p class="text-[11px] text-gray-400 font-medium">মোট ভিডিও সিরিজ</p>
         <h3 class="text-2xl font-black text-blue-400 mt-1" id="statVideos">0</h3>
       </div>
-      <div class="bg-[#12121b] border border-gray-800/80 p-4 rounded-2xl">
+      <div class="bg-[#12121b] border border-gray-800/80 p-4 rounded-2xl shadow-md">
         <p class="text-[11px] text-gray-400 font-medium">মোট অ্যাড ক্লিক (Earnings)</p>
         <h3 class="text-2xl font-black text-amber-400 mt-1" id="statAdClicks">0</h3>
       </div>
-      <div class="bg-[#12121b] border border-gray-800/80 p-4 rounded-2xl">
-        <p class="text-[11px] text-gray-400 font-medium">সক্রিয় ডিরেক্ট লিংক</p>
+      <div class="bg-[#12121b] border border-gray-800/80 p-4 rounded-2xl shadow-md">
+        <p class="text-[11px] text-gray-400 font-medium">অ্যাক্টিভ ডিরেক্ট লিংক</p>
         <h3 class="text-2xl font-black text-purple-400 mt-1" id="statActiveLinks">0</h3>
       </div>
     </div>
 
-    <!-- ডিরেক্ট লিংক স্মার্ট পুল ম্যানেজার -->
+    <!-- টাইমার ডিউরেশন কন্ট্রোল কার্ড -->
+    <div class="bg-[#12121b] border border-gray-800/80 p-5 rounded-2xl mb-8 flex flex-col sm:flex-row justify-between items-center gap-4 shadow-lg">
+      <div>
+        <h4 class="text-sm font-bold text-rose-400 flex items-center gap-2">
+          <i class="fa-solid fa-stopwatch"></i> Ad Gate Countdown Timer
+        </h4>
+        <p class="text-xs text-gray-400 mt-0.5">ইউজারকে ডিরেক্ট লিংকে কত সেকেন্ড অপেক্ষা করিয়ে তারপর ইনবক্সে ভিডিও পাঠাবেন?</p>
+      </div>
+      <div class="flex gap-2">
+        <input id="timerSeconds" type="number" value="7" min="1" max="60" class="w-20 bg-[#1b1b26] border border-gray-700 rounded-xl px-3 py-2 text-center text-sm font-bold text-white focus:outline-none focus:border-rose-500">
+        <button onclick="updateTimer()" class="bg-rose-600 hover:bg-rose-700 text-xs px-5 py-2 rounded-xl font-bold transition">Save</button>
+      </div>
+    </div>
+
+    <!-- ডিরেক্ট লিংক স্মার্ট রোটেশন ম্যানেজার -->
     <div class="bg-[#12121b] border border-gray-800/80 p-6 rounded-3xl mb-10 shadow-xl">
       <div class="flex justify-between items-center mb-4">
         <div>
           <h3 class="font-bold text-base text-white flex items-center gap-2">
             <span class="text-amber-400"><i class="fa-solid fa-shuffle"></i></span> আনলিমিটেড অ্যাড ডিরেক্ট লিংক রোটেশন
           </h3>
-          <p class="text-xs text-gray-400">একের পর এক ভিন্ন ভিন্ন লিংক ইউজারদের মাঝে রোটেট হবে</p>
+          <p class="text-xs text-gray-400">একের পর এক ভিন্ন ভিন্ন ডিরেক্ট লিংক ইউজারদের মাঝে স্বয়ংক্রিয়ভাবে ঘুরবে</p>
         </div>
       </div>
       
       <div class="flex gap-2 mb-6">
         <input id="newLinkInput" type="text" placeholder="https://monetag.com/direct-link-url..." class="flex-1 bg-[#1b1b26] border border-gray-700 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-amber-500">
-        <button onclick="addNewLink()" class="bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs px-6 py-3 rounded-xl shadow-lg flex items-center gap-1.5">
+        <button onclick="addNewLink()" class="bg-amber-500 hover:bg-amber-600 text-black font-bold text-xs px-6 py-3 rounded-xl shadow-lg flex items-center gap-1.5 transition">
           <i class="fa-solid fa-plus"></i> Add Link
         </button>
       </div>
@@ -98,40 +112,38 @@
       </div>
     </div>
 
-    <!-- ভিডিও পারফরম্যান্স ও এডিট লিস্ট -->
+    <!-- ভিডিও ও পার্টস ম্যানেজমেন্ট লিস্ট -->
     <div>
       <h3 class="font-bold text-lg text-white mb-5 flex items-center gap-2">
-        <span class="text-rose-500"><i class="fa-solid fa-video"></i></span> ভিডিও কনটেন্ট কন্ট্রোল
+        <span class="text-rose-500"><i class="fa-solid fa-film"></i></span> ভিডিও সিরিজ ও পার্টস কন্ট্রোল
       </h3>
       <div id="videosGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6"></div>
     </div>
   </div>
 
-  <!-- ভিডিও এডিট মডাল -->
+  <!-- ================= ৩. ভিডিও এডিট মডাল ================= -->
   <div id="editModal" class="fixed inset-0 bg-black/85 flex items-center justify-center hidden z-50 p-4">
     <div class="bg-[#151522] border border-gray-800 w-full max-w-md rounded-3xl p-6 shadow-2xl">
-      <h3 class="font-bold text-base text-rose-500 mb-4">ভিডিও ইনফরমেশন এডিট করুন</h3>
+      <h3 class="font-bold text-base text-rose-500 mb-4">সিরিজ ও থাম্বনেইল এডিট</h3>
       <input type="hidden" id="editVidId">
 
       <label class="text-xs text-gray-400 block mb-1">ভিডিও টাইটেল:</label>
-      <input id="editTitle" class="w-full bg-[#1c1c2b] border border-gray-700 p-3 rounded-xl text-xs text-white mb-3">
+      <input id="editTitle" class="w-full bg-[#1c1c2b] border border-gray-700 p-3 rounded-xl text-xs text-white mb-3 focus:outline-none focus:border-rose-500">
 
-      <label class="text-xs text-gray-400 block mb-1">বাটনের নাম বা পার্ট নম্বর:</label>
-      <input id="editBtn" class="w-full bg-[#1c1c2b] border border-gray-700 p-3 rounded-xl text-xs text-white mb-3">
-
-      <label class="text-xs text-gray-400 block mb-1">16:9 থাম্বনেইল ইমেজ URL:</label>
-      <input id="editThumb" class="w-full bg-[#1c1c2b] border border-gray-700 p-3 rounded-xl text-xs text-white mb-5">
+      <label class="text-xs text-gray-400 block mb-1">16:9 থাম্বনেইল ইমেজ URL (ImgBB/CDN):</label>
+      <input id="editThumb" class="w-full bg-[#1c1c2b] border border-gray-700 p-3 rounded-xl text-xs text-white mb-5 focus:outline-none focus:border-rose-500">
 
       <div class="flex gap-3">
-        <button onclick="saveVideoEdit()" class="flex-1 bg-rose-600 hover:bg-rose-700 text-xs py-3 rounded-xl font-bold">Save Changes</button>
-        <button onclick="closeEditModal()" class="flex-1 bg-gray-800 hover:bg-gray-700 text-xs py-3 rounded-xl">Cancel</button>
+        <button onclick="saveVideoEdit()" class="flex-1 bg-rose-600 hover:bg-rose-700 text-xs py-3 rounded-xl font-bold transition">Save Changes</button>
+        <button onclick="closeEditModal()" class="flex-1 bg-gray-800 hover:bg-gray-700 text-xs py-3 rounded-xl transition">Cancel</button>
       </div>
     </div>
   </div>
 
+  <!-- ================= স্ক্রিপ্ট লজিক ================= -->
   <script>
     let authToken = localStorage.getItem('admin_pass') || '';
-    let currentVideos = [];
+    let currentSeries = [];
 
     if (authToken) checkAuth();
 
@@ -166,10 +178,10 @@
     async function loadDashboard() {
       loadStats();
       loadLinks();
-      loadVideos();
+      loadSeriesWithParts();
     }
 
-    // অ্যানালিটিক্স লোড
+    // ১. স্ট্যাটাস লোড
     async function loadStats() {
       const res = await fetch('/api/admin/stats?pass=' + authToken);
       const data = await res.json();
@@ -179,7 +191,18 @@
       document.getElementById('statActiveLinks').innerText = data.links || 0;
     }
 
-    // ডিরেক্ট লিংক লোড
+    // ২. টাইমার সেকেন্ড আপডেট
+    async function updateTimer() {
+      const sec = document.getElementById('timerSeconds').value;
+      await fetch('/api/admin/set-timer?pass=' + authToken, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ seconds: sec })
+      });
+      alert('সফলভাবে ' + sec + ' সেকেন্ডে টাইমার সেট হয়েছে!');
+    }
+
+    // ৩. ডিরেক্ট লিংক লোড
     async function loadLinks() {
       const res = await fetch('/api/admin/links?pass=' + authToken);
       const links = await res.json();
@@ -188,7 +211,7 @@
 
       links.forEach(l => {
         tbody.innerHTML += `
-          <tr class="hover:bg-white/[0.02]">
+          <tr class="hover:bg-white/[0.02] transition">
             <td class="py-3 px-3 font-mono text-gray-300 truncate max-w-[280px] sm:max-w-md">${l.url}</td>
             <td class="py-3 px-3 text-amber-400 font-bold">${l.clicks || 0} clicks</td>
             <td class="py-3 px-3 text-right">
@@ -214,36 +237,44 @@
     }
 
     async function deleteLink(id) {
-      if (confirm('লিংকটি ডিলিট করবেন?')) {
+      if (confirm('লিংকটি ডিলিট করতে চান?')) {
         await fetch('/api/admin/delete-link/' + id + '?pass=' + authToken, { method: 'DELETE' });
         loadDashboard();
       }
     }
 
-    // ভিডিও লিস্ট ও ভিউ/ক্লিক লোড
-    async function loadVideos() {
-      const res = await fetch('/api/videos');
-      currentVideos = await res.json();
+    // ৪. ভিডিও সিরিজ ও পার্টস লোড
+    async function loadSeriesWithParts() {
+      const res = await fetch('/api/videos-with-parts');
+      currentSeries = await res.json();
       const grid = document.getElementById('videosGrid');
       grid.innerHTML = '';
 
-      currentVideos.forEach(v => {
-        grid.innerHTML += `
-          <div class="bg-[#12121b] border border-gray-800/80 rounded-2xl overflow-hidden shadow-lg flex flex-col">
-            <div class="relative">
-              <img src="${v.thumbnail}" class="thumb-16-9" />
-              <div class="absolute bottom-2 left-2 bg-black/70 backdrop-blur text-[10px] px-2 py-1 rounded-md text-amber-400 font-bold">
-                <i class="fa-solid fa-eye"></i> ${v.clicks || 0} Clicks
-              </div>
+      currentSeries.forEach(s => {
+        let partsList = '';
+        s.parts.forEach(p => {
+          partsList += `
+            <div class="flex justify-between items-center bg-[#1c1c2b] px-2.5 py-1.5 rounded-lg text-[11px] mb-1">
+              <span class="text-gray-300">🔘 ${p.button_text}</span>
+              <span class="text-amber-400 font-mono">${p.clicks || 0} clicks</span>
             </div>
-            <div class="p-4 flex-1 flex flex-col justify-between">
+          `;
+        });
+
+        grid.innerHTML += `
+          <div class="bg-[#12121b] border border-gray-800/80 rounded-3xl overflow-hidden shadow-xl flex flex-col">
+            <img src="${s.thumbnail}" class="thumb-16-9" />
+            <div class="p-5 flex-1 flex flex-col justify-between">
               <div>
-                <h4 class="font-bold text-sm line-clamp-2 text-white mb-2">${v.title}</h4>
-                <span class="inline-block bg-gray-800 text-purple-400 text-[10px] px-2.5 py-1 rounded-md mb-4">${v.button_text}</span>
+                <h4 class="font-bold text-base text-white mb-3">${s.title}</h4>
+                <div class="mb-4">
+                  <p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5 font-bold">আপলোড করা পার্টসমূহ:</p>
+                  ${partsList || '<p class="text-xs text-gray-600">কোনো পার্ট নেই</p>'}
+                </div>
               </div>
-              <div class="flex gap-2 pt-2 border-t border-gray-800">
-                <button onclick="openEditModal('${v._id}')" class="flex-1 bg-blue-600/20 text-blue-400 border border-blue-500/30 text-xs py-2 rounded-xl font-bold">Edit</button>
-                <button onclick="deleteVideo('${v._id}')" class="flex-1 bg-red-600/20 text-red-400 border border-red-500/30 text-xs py-2 rounded-xl font-bold">Delete</button>
+              <div class="flex gap-2 pt-3 border-t border-gray-800">
+                <button onclick="openEditModal('${s.id}')" class="flex-1 bg-blue-600/20 text-blue-400 border border-blue-500/30 text-xs py-2.5 rounded-xl font-bold hover:bg-blue-600/30">Edit</button>
+                <button onclick="deleteSeries('${s.id}')" class="flex-1 bg-red-600/20 text-red-400 border border-red-500/30 text-xs py-2.5 rounded-xl font-bold hover:bg-red-600/30">Delete</button>
               </div>
             </div>
           </div>
@@ -252,12 +283,11 @@
     }
 
     function openEditModal(id) {
-      const v = currentVideos.find(x => x._id === id);
-      if (!v) return;
-      document.getElementById('editVidId').value = v._id;
-      document.getElementById('editTitle').value = v.title;
-      document.getElementById('editBtn').value = v.button_text;
-      document.getElementById('editThumb').value = v.thumbnail;
+      const s = currentSeries.find(x => x.id === id);
+      if (!s) return;
+      document.getElementById('editVidId').value = s.id;
+      document.getElementById('editTitle').value = s.title;
+      document.getElementById('editThumb').value = s.thumbnail;
       document.getElementById('editModal').classList.remove('hidden');
     }
 
@@ -268,21 +298,20 @@
     async function saveVideoEdit() {
       const id = document.getElementById('editVidId').value;
       const title = document.getElementById('editTitle').value;
-      const button_text = document.getElementById('editBtn').value;
       const thumbnail = document.getElementById('editThumb').value;
 
       await fetch('/api/admin/edit-video?pass=' + authToken, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, title, button_text, thumbnail })
+        body: JSON.stringify({ id, title, thumbnail })
       });
 
       closeEditModal();
       loadDashboard();
     }
 
-    async function deleteVideo(id) {
-      if (confirm('ভিডিওটি ডিলিট করতে চান?')) {
+    async function deleteSeries(id) {
+      if (confirm('এই সিরিজ এবং এর সব পার্ট ডিলিট করতে চান?')) {
         await fetch('/api/admin/delete-video/' + id + '?pass=' + authToken, { method: 'DELETE' });
         loadDashboard();
       }

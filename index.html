@@ -127,6 +127,10 @@
     let waitSeconds = 7;
     let detectedBotUsername = "";
 
+    // অ্যাড ক্লিক ট্র্যাকিং ভ্যারিয়েবল
+    let adOpenedTime = 0;
+    let isWaitingForAdReturn = false;
+
     async function loadVideos() {
       try {
         const res = await fetch('/api/videos-with-parts');
@@ -209,61 +213,87 @@
       document.getElementById('unlockModal').classList.add('hidden');
     }
 
-    // ১০০% গ্যারান্টিড আনলক ও শতভাগ ভিডিও পাওয়ার লজিক
+    // =========================================================================
+    // 🌟 ব্যাক বাটন ডিটেকশন ও অটোমেটিক কেটেকুটে ইনবক্সে যাওয়ার ইঞ্জিন
+    // =========================================================================
     async function startAdUnlock() {
       const btn = document.getElementById('adBtn');
       const btnText = document.getElementById('adBtnText');
       btn.disabled = true;
+      btnText.innerText = "বিজ্ঞাপন লোড হচ্ছে...";
 
       const res = await fetch('/api/get-ad-gate');
       const data = await res.json();
       detectedBotUsername = data.bot_username || detectedBotUsername;
 
-      // ১. অ্যাড ওপেন
+      // সময় ট্র্যাক শুরু
+      adOpenedTime = Date.now();
+      isWaitingForAdReturn = true;
+
+      // ১. বিজ্ঞাপন ওপেন করা
       if (tg && tg.openLink) {
         tg.openLink(data.url);
       } else {
         window.open(data.url, '_blank');
       }
 
-      // ২. টাইমার চলা
-      let timeLeft = waitSeconds;
-      const timer = setInterval(async () => {
-        timeLeft--;
-        btnText.innerText = `অপেক্ষা করুন (${timeLeft}s)...`;
-
-        if (timeLeft <= 0) {
-          clearInterval(timer);
-          btnText.innerText = "✅ Unlocked! ভিডিও পাঠানো হচ্ছে...";
-
-          // ৩. আগে ব্যাকএন্ডকে কনফার্ম করা যে ভিডিও পাঠাও (Await দিয়ে নিশ্চিত হওয়া)
-          const userId = tg?.initDataUnsafe?.user?.id;
-          if (userId) {
-            try {
-              await fetch('/api/deliver-video', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ part_id: selectedPartId, user_id: userId })
-              });
-            } catch (err) {
-              console.error("API Delivery Error:", err);
-            }
-          }
-
-          // ৪. নিশ্চিত হওয়ার পর বটে নিয়ে যাওয়া
-          setTimeout(() => {
-            const finalUsername = detectedBotUsername || tg?.initDataUnsafe?.bot_username;
-            const deepLink = `https://t.me/${finalUsername}?start=get_${selectedPartId}`;
-            
-            if (tg && tg.openTelegramLink) {
-              tg.openTelegramLink(deepLink);
-            } else {
-              window.location.href = deepLink;
-            }
-          }, 400);
-        }
-      }, 1000);
+      btnText.innerText = `বিজ্ঞাপন চলছে... ${waitSeconds}s পর Back দিন`;
     }
+
+    // ইউজার যখনই বিজ্ঞাপনের পেজ থেকে BACK দিয়ে আবার অ্যাপে ফিরবে
+    function handleUserReturned() {
+      if (!isWaitingForAdReturn) return;
+
+      const timeSpent = (Date.now() - adOpenedTime) / 1000;
+
+      // যদি সে অ্যাডমিন সেট করা সেকেন্ডের সমান বা বেশি সময় পর ফেরে
+      if (timeSpent >= waitSeconds) {
+        isWaitingForAdReturn = false;
+        document.getElementById('adBtnText').innerText = "✅ Unlocked! ইনবক্সে যাচ্ছি...";
+
+        // ক) ব্যাকএন্ড দিয়ে ভিডিও সরাসরি ইনবক্সে পাঠানো
+        const userId = tg?.initDataUnsafe?.user?.id;
+        if (userId && selectedPartId) {
+          fetch('/api/deliver-video', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ part_id: selectedPartId, user_id: userId })
+          });
+        }
+
+        // খ) সাথে সাথে মিনি অ্যাপ নিজে থেকে কেটে যাবে এবং বটের চ্যাটে চলে যাবে
+        setTimeout(() => {
+          const finalUsername = detectedBotUsername || tg?.initDataUnsafe?.bot_username;
+          const deepLink = `https://t.me/${finalUsername}?start=get_${selectedPartId}`;
+          
+          if (tg && tg.openTelegramLink) {
+            tg.openTelegramLink(deepLink);
+            tg.close(); // অ্যাপ কেটে যাবে!
+          } else {
+            window.location.href = deepLink;
+          }
+        }, 300);
+
+      } else {
+        // যদি নির্দিষ্ট সেকেন্ডের আগেই ফিরে আসে
+        const bakiAche = Math.ceil(waitSeconds - timeSpent);
+        alert(`⚠️ অনুগ্রহ করে বিজ্ঞাপনে আরও ${bakiAche} সেকেন্ড অপেক্ষা করে তারপর Back দিন!`);
+        document.getElementById('adBtn').disabled = false;
+        document.getElementById('adBtnText').innerText = "Ad দেখে Unlock করুন";
+        isWaitingForAdReturn = false;
+      }
+    }
+
+    // ব্যাক ডিটেকশন ইভেন্ট
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        handleUserReturned();
+      }
+    });
+
+    window.addEventListener("focus", () => {
+      handleUserReturned();
+    });
 
     function handleCoinUnlock() {
       alert("⚠️ আপনার অ্যাকাউন্টে পর্যাপ্ত Coins নেই! Ad দেখে ফ্রিতে ভিডিওটি নিন।");
